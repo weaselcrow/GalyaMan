@@ -186,7 +186,7 @@ function updateIce(dt) {
     if (ice.end > 1.1) {
       ice = null; mode = 'play'; playSong(L.boss ? 'boss' : 'level');
       if (L.boss && boss && boss.state === 'p3') { boss.state = 'offer'; boss.t = 0; boss.waveT = 3.2; boss.card = 4; say(boss, '…МОЖНО МНЕ ТОЖЕ ПЛОМБИР?', 2.6); }
-      else { say(P, pick(['…', 'ЧТО ЭТО БЫЛО', 'ГАВ?']), 1.4); const rs = L.rabbits.filter(r => inView(r.x, -20)); if (rs.length) say(pick(rs), pick(['это кто был?', 'мне эскимо…', 'он нас не спас']), 2); }
+      else { say(P, pick(['…', 'ЧТО ЭТО БЫЛО', 'ГАВ?']), 1.4); const rs = L.rabbits.filter(r => inView(r.x, -20)); if (rs.length) say(pick(rs), pick(['это кто был?', 'мне эскимо… напоследок', 'он видел всё. и уехал']), 2); }
     }
   }
 }
@@ -273,7 +273,7 @@ function startHop() {
 function spawnSupport() {
   if (L.rabbits.length >= 3) return;
   const side = Math.random() < .5 ? -1 : 1;
-  const r = mkRabbit(side < 0 ? 40 : W - 40, -10, 'support', pick(['Пушистик, держись!', 'я принёс платочек!', 'мы с тобой!', 'не плачь!']), { tx: 0 });
+  const r = mkRabbit(side < 0 ? 40 : W - 40, -10, 'support', pick(['Пушистик, держись!', 'я принёс платочек! и завещание', 'мы с тобой! недолго', 'не плачь, она это любит']), { tx: 0 });
   r.side = side; r.onGround = false; r.said = true; say(r, r.line, 2.4); L.rabbits.push(r);
 }
 function hitBoss() {
