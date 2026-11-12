@@ -94,11 +94,9 @@ function drawPlayer() {
   const laughFr = t => (t / .13 | 0) % 2 ? 'g_laugh2' : 'g_laugh1';
   if (P.masked) { name = 'g_mask' + ((gameT / .35 | 0) % 3); if (mode === 'celebrate') oy = -Math.abs(Math.sin(gameT * 9)) * 5; }
   else if (mode === 'celebrate') {
-    const t = cele.t, k = cele.kind;
-    if (k === 'howl') { if (t < .45) name = 'g_howl0a'; else if (t < .9) name = 'g_howl0b'; else { name = (t / .32 | 0) % 2 ? 'g_howl2' : 'g_howl1'; oy = (t / .06 | 0) % 2 ? -1 : 0; } }
-    else if (k === 'laugh') { name = laughFr(t); oy = (t / .065 | 0) % 2 ? -2 : 0; }
-    else if (t < .5) name = laughFr(t);
-    else { const q = ((t - .5) / .19 | 0); name = q % 2 ? 'g_dance2' : 'g_dance1'; if ((q / 2 | 0) % 2) flip = !flip; oy = -Math.abs(Math.sin((t - .5) * 16.5)) * 6; }
+    const t = cele.t;
+    if (t < 1.3) { name = laughFr(t); oy = (t / .065 | 0) % 2 ? -2 : 0; }
+    else { const q = ((t - 1.3) / .19 | 0); name = q % 2 ? 'g_dance2' : 'g_dance1'; if ((q / 2 | 0) % 2) flip = !flip; oy = -Math.abs(Math.sin((t - 1.3) * 16.5)) * 6; }
   }
   else if (mode === 'tikhon' && tk && tk.ph === 3) { name = laughFr(tk.t); oy = (tk.t / .065 | 0) % 2 ? -2 : 0; }
   else if (mode === 'dead' || P.hurtT > 0) name = 'g_hit';
@@ -214,7 +212,7 @@ function updateTikhon(dt) {
   switch (k.ph) {
     case 0: k.x += k.dir * 250 * dt; if ((k.stop - k.x) * k.dir <= 0) { k.x = k.stop; k.ph = 1; k.t = 0; sfx.thud(); say(P, '?', 1); } break;
     case 1:
-      if (k.t > .7 && !k.money) { k.money = { t: 0, x0: k.x + k.dir * 20, done: false }; sfx.swing(); donate('Тихон', '300 000 р.', 'на ипотеку. и на Японию'); say(k, 'ДЕРЖИ. НА ИПОТЕКУ', 1.5); }
+      if (k.t > .7 && !k.money) { k.money = { t: 0, x0: k.x + k.dir * 20, done: false }; sfx.swing(); say(k, 'ДЕРЖИ. НА ИПОТЕКУ', 1.5); }
       if (k.money && !k.money.done) { k.money.t += dt; if (k.money.t >= .6) { k.money.done = true; P.hp = Math.min(P.maxhp, P.hp + 3); sfx.heal(); floater('ДЕНЬГИ ЛЕЧАТ', P.x, P.y - 100, { color: '#7fe08a', t: 1.6 }); burst(P.x, P.y - 50, 16, ['#7fe08a', '#2f8a3a', '#f3c93a'], 170, .6); } }
       if (k.t > 2.4) { k.ph = 2; k.t = 0; say(k, 'ГАЛЯ, ПОЛЕТИШЬ СО МНОЙ В ЯПОНИЮ?', 2.7); sfx.blip2(); }
       break;
@@ -465,11 +463,11 @@ try { unlocked = Math.max(1, +localStorage.getItem('galyamen_unlocked') || 1); }
 function unlockNext() { unlocked = Math.max(unlocked, curLevel + 2); try { localStorage.setItem('galyamen_unlocked', String(unlocked)); } catch (e) { } }
 function newGame() {
   nameI = 0; NAMES.sort(() => Math.random() - .5);
-  stats = { dons: 0, hats: 0, kills: 0, cases: 0, casesTotal: 0, carrots: 0, best: 0, hits: 0, deaths: 0, time: 0, l1left: 0 };
+  stats = { hats: 0, kills: 0, cases: 0, casesTotal: 0, carrots: 0, best: 0, hits: 0, deaths: 0, time: 0, l1left: 0 };
   memorial = []; parts = []; gibs = []; stains = []; splats = []; lens = []; floats = []; pickups = []; fxs = []; tears = []; puddles = [];
   chain = 0; chainT = 0; pendingCele = false; ice = null; iceSeen = false; boss = null; banner = null; letterT = 0; walker = null; walkerT = 10; fallCase = false;
   hitstop = 0; shake = 0; slow = 1; paused = false;
-  L = LEVELS[curLevel].build(); stats.casesTotal = L.casesTotal || 0; souls = []; tk = null; pools = []; toast = null; toastQ = [];
+  L = LEVELS[curLevel].build(); stats.casesTotal = L.casesTotal || 0; souls = []; tk = null; pools = [];
   if (L.pot) pickups.push({ k: 'pot', x: L.pot.x, y: L.pot.y, vx: 0, vy: 0, t: 1, rest: true });
   Object.assign(P, { x: 90, y: FY, vx: 0, vy: 0, face: 1, hp: 5, inv: 0, hurtT: 0, atk: 0, onGround: true, ground: null, idleT: 0, bub: null, masked: 0, crouch: false, h: 76, idleAnim: '', safeX: 90, safeY: FY, emoteT: 0 });
   cam = 0; look = 0; mode = 'play'; modeT = 0;
@@ -485,7 +483,7 @@ function updatePlay(dt) {
   if (hitstop > 0) { hitstop -= dt; return; }
   stats.time += dt; modeT += dt;
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
-  updateFx(dt); updateToasts(dt);
+  updateFx(dt);
   switch (mode) {
     case 'play':
       updateWorld(dt); if (mode !== 'play') break;
@@ -525,13 +523,11 @@ function drawHud() {
   drawBossHud();
   if (banner) { const a = Math.min(1, banner.t * 2); T(banner.s, W / 2, 120, { size: 18, color: '#fff', stroke: '#1b2a6b', sw: 6, a }); if (banner.sub && (banner.t * 5 | 0) % 2) T(banner.sub, W / 2, 152, { size: 12, color: '#ffe36b', stroke: '#16161d', a }); }
   if (letterT > 0) OV.push(c => { const a = Math.min(1, letterT * 2); c.globalAlpha = a; c.fillStyle = '#16161d'; c.fillRect(W / 2 - 172, 78, 344, 104); c.fillStyle = '#fff6e0'; c.fillRect(W / 2 - 168, 82, 336, 96); c.font = '9px PS2P,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#5a4a3a'; c.fillText('ПИСЬМО ИЗ ЧЕМОДАНА:', W / 2, 100); c.fillStyle = '#16161d'; c.font = '11px PS2P,monospace'; c.fillText('«ГАЛЯ, ОСТАНОВИСЬ.', W / 2, 126); c.fillText('ПОЖАЛУЙСТА.»', W / 2, 144); c.font = '8px PS2P,monospace'; c.fillStyle = '#5a4a3a'; c.fillText('— кролики', W / 2 + 90, 164); c.globalAlpha = 1; });
-  if (mode === 'celebrate' && cele.kind === 'howl' && cele.t > .9) OV.push(c => { const a = Math.min(1, (cele.t - .9) * 2.5) * Math.min(1, (CELE_T - cele.t) * 3); c.globalAlpha = a * .92; c.fillStyle = '#fff6c8'; c.beginPath(); c.arc(W - 130, 150, 40, 0, 6.3); c.fill(); c.fillStyle = '#e3d79a'; [[-14, -8, 8], [10, 12, 6], [12, -16, 4]].forEach(m => { c.beginPath(); c.arc(W - 130 + m[0], 150 + m[1], m[2], 0, 6.3); c.fill(); }); c.globalAlpha = 1; });
   if (mode === 'celebrate') {
     const t = cele.t, pop = Math.min(1, t * 6);
     if (!L.after) T('КОМБО x' + cele.n + '!', W / 2, 84, { size: 26 * pop, color: '#ffe36b', stroke: '#a3111f', sw: 7, rot: Math.sin(t * 9) * .05 });
     T(cele.title, W / 2, L.after ? 100 : 122, { size: L.after ? 30 : 12, color: '#fff', stroke: '#16161d', sw: L.after ? 8 : 4 });
-    const word = cele.kind === 'howl' ? (t > .9 ? 'АУУУ' : '') : (cele.kind === 'laugh' || t < .5) ? 'ХА' : '';
-    if (word && !L.after) for (let i = 0; i < 3; i++) T(word, P.x - camR + Math.sin(t * 7 + i * 2) * 50, P.y - 110 - ((t * 60 + i * 26) % 70), { size: 11, color: '#ff8a94', stroke: '#16161d', rot: Math.sin(t * 5 + i) * .3 });
+    if (t < 1.4 && !L.after) for (let i = 0; i < 3; i++) T('ХА', P.x - camR + Math.sin(t * 7 + i * 2) * 50, P.y - 110 - ((t * 60 + i * 26) % 70), { size: 11, color: '#ff8a94', stroke: '#16161d', rot: Math.sin(t * 5 + i) * .3 });
   }
   if (mode === 'dead' && modeT > 1) { T('ГАЛЯ ПАЛА', W / 2, 150, { size: 30, color: '#ff5b6b', stroke: '#16161d', sw: 8 }); T('кролики празднуют (недолго)', W / 2, 190, { size: 10, color: '#fff', stroke: '#16161d' }); if (modeT > 1.5 && (gameT * 2 | 0) % 2) T(TOUCH ? 'ТАПНИ' : 'ЛЮБАЯ КНОПКА', W / 2, 226, { size: 10, color: '#ffe36b', stroke: '#16161d' }); }
   if (boss && L.boss && boss.won && mode === 'bossdeath') { T('ПОЛУЧЕНО: МАСКА КРОЛИКА', W / 2, 96, { size: 22, color: '#ffe36b', stroke: '#16161d', sw: 7 }); T('(ещё тёплая)', W / 2, 128, { size: 14, color: '#fff', stroke: '#16161d', sw: 5 }); }
@@ -631,7 +627,7 @@ function drawEnding() {
     if (t > .6) T('ГАЛЯ ПОБЕДИЛА.', W / 2, 70, { size: 26, color: '#fff' });
     if (t > 2.6) T('Довольна?', W / 2, 108, { size: 14, color: '#ff8a94' });
     const mm = (stats.time / 60 | 0) + ':' + String(stats.time % 60 | 0).padStart(2, '0');
-    const rows = [['ШАПОК', stats.hats], ['ДОНАТОВ ОТ СИМПОВ', stats.dons + (stats.dons ? ' (ИПОТЕКА ЗАКРЫТА)' : '')], ['ЧЕМОДАНОВ', stats.cases + '/' + stats.casesTotal], ['МОРКОВОК ОТОБРАНО', stats.carrots], ['ЛУЧШЕЕ КОМБО', 'x' + stats.best], ['КРОЛИКОВ ВЫЖИЛО', stats.l1left ? stats.l1left + ' (ОНИ ВСЁ ВИДЕЛИ)' : 'НИ ОДНОГО'], ['ВРЕМЯ', mm]];
+    const rows = [['ШАПОК', stats.hats], ['ЧЕМОДАНОВ', stats.cases + '/' + stats.casesTotal], ['МОРКОВОК ОТОБРАНО', stats.carrots], ['ЛУЧШЕЕ КОМБО', 'x' + stats.best], ['КРОЛИКОВ ВЫЖИЛО', stats.l1left ? stats.l1left + ' (ОНИ ВСЁ ВИДЕЛИ)' : 'НИ ОДНОГО'], ['ВРЕМЯ', mm]];
     rows.forEach((r, i) => { if (t > 4.4 + i * .5) { T(r[0], W / 2 - 14, 152 + i * 24, { size: 10, color: '#8f9ad0', align: 'right' }); T(String(r[1]), W / 2 + 14, 152 + i * 24, { size: 10, color: '#ffe36b', align: 'left' }); } });
     if (t > 8) T('РАНГ: ' + rankOf(), W / 2, 316, { size: 14, color: '#3ddc6a', stroke: '#16161d', sw: 5 });
     if (P.masked) spr('g_mask' + ((t / .35 | 0) % 3), 90, 430 - Math.abs(Math.sin(t * 6)) * 4, false, { img: galB[3] });
@@ -736,6 +732,6 @@ window.__dbg = {
   get s() { return { scene, mode, x: P.x, y: P.y, hp: P.hp, kills: stats && stats.kills, hats: stats && stats.hats, boss: boss && { hp: boss.hp, state: boss.state, phase: boss.phase, x: boss.x }, cam, rabbits: L && L.rabbits.length, chain, fade }; },
   warp(x, y) { P.x = x; P.y = y === undefined ? FY : y; P.vx = P.vy = 0; cam = clamp(x - 360, 0, L.w - W); },
   god(v) { P.maxhp = v ? 99 : 5; P.hp = P.maxhp; },
-  start() { startLevel(0); }, tikhon() { startTikhon(); }, soul() { souls.push({ x: P.x + 60, y: P.y - 20, t: 0, sc: 1, s: 'я тебя прощаю, Галина…' }); }, cele(k) { cele.n = 4; startCelebrate(); if (k) cele.kind = k; }, idle(k) { P.idleT = 4; P.idleAnim = k; P.idleA = 0; }, boss() { startBoss(); }, bosshp(n) { boss.hp = n; }, ending() { startEnding(); },
+  start() { startLevel(0); }, tikhon() { startTikhon(); }, soul() { souls.push({ x: P.x + 60, y: P.y - 20, t: 0, sc: 1, s: 'я тебя прощаю, Галина…' }); }, cele() { cele.n = 4; startCelebrate(); }, idle(k) { P.idleT = 4; P.idleAnim = k; P.idleA = 0; }, boss() { startBoss(); }, bosshp(n) { boss.hp = n; }, ending() { startEnding(); },
   skip() { iceSeen = true; fallCase = true; }, bossObj: () => boss, tears: () => tears, zaps: () => L.zaps.map(z => ({ x: z.x, y0: z.y0, y1: z.y1, on: zapOn(z), warn: zapWarn(z) })), L: () => L, P, songs: SONGS, n2f: N2F, audio: () => AC && { state: AC.state, song: song && song.name }
 };

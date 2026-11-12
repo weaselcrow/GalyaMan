@@ -3,7 +3,6 @@ let scene = 'load', sceneT = 0;
 let L = null, cam = 0, camR = 0, look = 0;
 let mode = 'play', modeT = 0;
 let hitstop = 0, shake = 0, slow = 1, flash = 0, fade = 0, fadeDir = 0, fadeCb = null;
-let toast = null, toastQ = [];
 let souls = [], tk = null, talkCd = 0, pools = [];
 let parts = [], gibs = [], stains = [], splats = [], lens = [], floats = [], pickups = [], fxs = [];
 let stats = null, memorial = [];
@@ -29,7 +28,6 @@ const NAMES = [
 let nameI = 0;
 const LAST = ['это попадёт в клип?', 'я же донатил…', 'отпишусь…', 'хоть в нарезку попаду', 'а ипотеку кто закроет?', 'за что?..', 'скажи маме, что я стал шапкой', 'я же платил налоги', 'хоть ипотеку не платить', 'жена и не заметит', 'только не в рагу', 'дед, я иду к тебе', 'ну хоть не на воротник', 'это из-за морковки?', 'так и не съездил на море', 'я знал, что понедельник', 'так и не поцеловался', 'передайте ей… а, неважно', 'хнык'];
 const BONK = ['БДЫЩ!', 'ХРЯСЬ!', 'ШМЯК!', 'БАМ!', 'ЧВЯК!', 'БОНЬК!', 'ХЛОП!', 'ТЫДЫЩ!'];
-const AWE_HOWL = ['она воет…', 'она и собака, и волк?!', 'мы для неё закуска', 'луна вышла посмотреть'];
 const AWE = ['она смеётся…', 'это её любимая часть', 'дед рассказывал про этот танец', 'не дыши', 'притворись шапкой', 'я, кажется, обделался', 'мамочки', 'она ещё и танцует'];
 
 function mkRabbit(x, y, kind, line, o) {
@@ -299,36 +297,15 @@ function updateFx(dt) {
   }
 }
 
-// ---------- стрим: донаты от симпов ----------
-const NICKS = ['Степашка_1987', 'simp_na_ipoteku', 'Геннадий_Олегович', 'фанат_Нудл_Дудл', 'верный_зая', 'модер_чата', 'ипотечник228', 'КроликБезЖены', 'жена_не_знает', 'топ_донатер_Гали'];
-const DON_MSG = ['на ипотеку, Галя', 'закрой свою ипотеку. я свою не смог', 'жене не говори', 'красиво ты его', 'это был мой сосед. спасибо', 'привет передай на стриме', 'я следующий, да?', 'люблю тебя, Галя. жена спит', 'взял кредит на этот донат', 'ещё одного, пожалуйста', 'Галя, скажи моё имя'];
-const DON_SUM = ['100 р.', '300 р.', '500 р.', '1 000 р.', '5 000 р.', 'всю зарплату', 'детские', 'кредит'];
-function donate(nick, sum, msg) {
-  toastQ.push({ nick: nick || pick(NICKS), sum: sum || pick(DON_SUM), msg: msg || pick(DON_MSG), t: 0 });
-  if (toastQ.length > 2) toastQ.shift();
-  stats.dons++;
-}
-function updateToasts(dt) {
-  if (toast) { toast.t += dt; if (toast.t > 3.4) toast = null; }
-  if (!toast && toastQ.length) { toast = toastQ.shift(); toast.t = 0; sfx.hat(); }
-}
+// ---------- стрим ----------
 function drawStream() {
-  // плашка трансляции и всплывающие донаты
+  // плашка трансляции
   const v = 87 + stats.kills * 173 + ((gameT * .7 | 0) % 9), on = (gameT * 1.5 | 0) % 2;
   OV.push(c => {
     c.fillStyle = '#16161d'; c.fillRect(W - 152, 8, 140, 18); c.fillStyle = '#c2121f'; c.fillRect(W - 150, 10, 46, 14);
     c.font = '8px PS2P,monospace'; c.textBaseline = 'middle'; c.textAlign = 'left'; c.fillStyle = on ? '#fff' : '#ffb0b6'; c.fillText('LIVE', W - 144, 18);
     c.fillStyle = '#fff'; c.textAlign = 'right'; c.fillText(String(v).replace(/(\d)(?=(\d{3})+$)/g, '$1 ') + ' зр.', W - 18, 18);
   });
-  if (toast) {
-    const k = toast.t, a = Math.min(1, k * 6, (3.4 - k) * 4), lines = wrap(toast.msg, 26), h = 34 + lines.length * 12, x = W - 12 - 232 + (1 - Math.min(1, k * 6)) * 40, y = 60;
-    OV.push(c => {
-      c.globalAlpha = Math.max(0, a); c.fillStyle = '#16161d'; c.fillRect(x - 2, y - 2, 236, h + 4); c.fillStyle = '#5b2a9a'; c.fillRect(x, y, 232, h); c.fillStyle = '#ffe36b'; c.fillRect(x, y, 232, 3);
-      c.font = '8px PS2P,monospace'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = '#ffe36b'; c.fillText(toast.nick, x + 8, y + 14);
-      c.fillStyle = '#7fe08a'; c.textAlign = 'right'; c.fillText(toast.sum, x + 224, y + 26); c.textAlign = 'left'; c.fillStyle = '#d9c8ff'; c.fillText('донат:', x + 8, y + 26);
-      c.fillStyle = '#fff'; lines.forEach((l, i) => c.fillText(l, x + 8, y + 40 + i * 12)); c.globalAlpha = 1;
-    });
-  }
 }
 // ---------- kills ----------
 function killRabbit(r, dir) {
@@ -344,7 +321,6 @@ function killRabbit(r, dir) {
   memorial.push([r.name, r.epi]);
   floater('ПРОЩАЙ, ' + r.name.toUpperCase(), cx, cy - 46, { color: '#ff8a94', size: 8, t: 1.6, vy: -22 });
   if (boss && !boss.dead && L.boss) { boss.grief = 1.6; say(boss, (r.name + '!!! НЕЕЕТ!').toUpperCase(), 1.6); sfx.scream(.6); }
-  if (Math.random() < .4) donate();
   chain++; chainT = 3.6; stats.best = Math.max(stats.best, chain);
   if (chain % 4 === 0) { pendingCele = true; cele.n = chain; }
   if (Math.random() < .35) souls.push({ x: cx, y: cy, t: 0, sc: r.scale, s: pick(['я тебя прощаю, Галина…', 'зла не держу, Галина', 'из меня выйдет хорошая шапка, Галина', 'спасибо, Галина. дома было хуже', 'подписка остаётся активной, Галина', 'автоплатёж не отключай, Галина', 'тебя прощаю, Галина. жену — нет', 'носи меня с гордостью, Галина', 'увидимся в рагу, Галина']) });
@@ -363,14 +339,11 @@ function startCelebrate() {
   pendingCele = false; mode = 'celebrate'; cele.t = 0;
   const lvl = Math.floor(cele.n / 4);
   cele.title = lvl <= 1 ? pick(['КЛИП ДНЯ', 'ЧЕТЫРЕ ПОДРЯД', 'ЧАТ В ВОСТОРГЕ']) : lvl === 2 ? pick(['ВОСЕМЬ ШАПОК ПОДРЯД', 'ГАЛЮ НЕ ОСТАНОВИТЬ']) : pick(['КРОЛИЧИЙ АПОКАЛИПСИС', 'ЗОВИТЕ ЗООЗАЩИТУ']);
-  cele.kind = P.masked ? 'mask' : pick(['dance', 'howl', 'laugh']);
   P.vx = 0; P.atk = 0; P.crouch = false; P.h = 76; P.idleAnim = '';
-  if (cele.kind === 'howl') { stopSong(); sfx.howl(); }
-  else if (cele.kind === 'laugh') { stopSong(); sfx.maniac(); setTimeout(() => { if (mode === 'celebrate') sfx.maniac(); }, 1300); }
-  else { sfx.laugh(5, 600); playSong('dance'); }
+  sfx.maniac(); playSong('dance');
   let aweN = 0;
-  for (const r of L.rabbits) if (!r.dead && inView(r.x)) { r.awe = true; r.vx = 0; if (aweN < 2 && Math.random() < .6) { aweN++; say(r, pick(cele.kind === 'howl' ? AWE_HOWL : AWE), 2.4); } else r.bub = null; }
-  if (boss && L.boss && !boss.dead) say(boss, cele.kind === 'howl' ? 'ЧАТ, ОНА ВОЕТ…' : cele.kind === 'dance' ? 'ЧАТ, ПОЧЕМУ ОНА ТАНЦУЕТ?!' : pick(['ЭТО НЕ СМЕШНО!', 'ОНИ БЫЛИ МОИМИ ЗРИТЕЛЯМИ…']), 2.4);
+  for (const r of L.rabbits) if (!r.dead && inView(r.x)) { r.awe = true; r.vx = 0; if (aweN < 2 && Math.random() < .6) { aweN++; say(r, pick(AWE), 2.4); } else r.bub = null; }
+  if (boss && L.boss && !boss.dead) say(boss, pick(['ЧАТ, ПОЧЕМУ ОНА ТАНЦУЕТ?!', 'ЭТО НЕ СМЕШНО!', 'ОНИ БЫЛИ МОИМИ ЗРИТЕЛЯМИ…']), 2.4);
 }
 function endCelebrate() {
   mode = 'play'; for (const r of L.rabbits) r.awe = false;

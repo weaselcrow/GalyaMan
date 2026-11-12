@@ -32,12 +32,6 @@ def feet_cx(im, rows=6):
     return (xs.min() + xs.max()) / 2.0
 
 
-def pan_cx(im):
-    lab, order = blobs(im)
-    xs = np.where((lab == order[1]).any(0))[0]
-    return (xs.min() + xs.max()) / 2.0
-
-
 # --- Galya -----------------------------------------------------------
 g = [im for im, _ in cut.cut('13', 6, 0.2)]
 for name, im, ax in zip(['g_idle', 'g_run', 'g_jump', 'g_wind', 'g_smash', 'g_hit'], g, [27, 31, 24, 28, 28, 34]):
@@ -74,11 +68,6 @@ def biggest_blob(im):
 
 
 wolf = cut.cut(None, 5, 0.2, path='art/galya_wolf.png', alpha=True)
-add_auto(['g_wolf0'], wolf[:1])
-# howl sequence: the pan lies on the floor in all four frames, so anchor them by the pan to keep it still
-off = float(np.median([pan_cx(im) - feet_cx(im) for im, _ in wolf[1:]]))
-for name, (im, _) in zip(['g_howl0a', 'g_howl0b', 'g_howl1', 'g_howl2'], wolf[1:]):
-    add(name, im, pan_cx(im) - off)
 # player crouch: same poses without the pan (she keeps it on her back)
 add_auto(['g_crouch', 'g_crouch2'], [(biggest_blob(wolf[1][0]), None), (biggest_blob(wolf[2][0]), None)])
 add_auto(['g_vod%d' % i for i in range(8)], cut.cut(None, 8, 0.2, path='art/galya_vodka.png', alpha=True))
