@@ -13,13 +13,38 @@ def add(name, im, ax, ay=None):
     frames[name] = (im, int(round(ax)), im.height if ay is None else int(ay))
 
 
+def blobs(im):
+    from scipy import ndimage as ndi2
+    a = np.array(im)
+    lab, n = ndi2.label(a[..., 3] > 0)
+    sizes = ndi2.sum(a[..., 3] > 0, lab, range(1, n + 1))
+    order = np.argsort(-sizes)
+    return lab, [int(o) + 1 for o in order]
+
+
+def feet_cx(im, rows=6):
+    """x-centre of whatever part of the body touches the ground (ignores a pan lying nearby)"""
+    lab, order = blobs(im)
+    body = lab == order[0]
+    ys = np.where(body.any(1))[0]
+    band = body[ys.max() - rows + 1:ys.max() + 1]
+    xs = np.where(band.any(0))[0]
+    return (xs.min() + xs.max()) / 2.0
+
+
+def pan_cx(im):
+    lab, order = blobs(im)
+    xs = np.where((lab == order[1]).any(0))[0]
+    return (xs.min() + xs.max()) / 2.0
+
+
 # --- Galya -----------------------------------------------------------
 g = [im for im, _ in cut.cut('13', 6, 0.2)]
 for name, im, ax in zip(['g_idle', 'g_run', 'g_jump', 'g_wind', 'g_smash', 'g_hit'], g, [27, 31, 24, 28, 28, 34]):
     add(name, im, ax)
 g2 = [im for im, _ in cut.cut('20', 4, 0.2)]
-for name, im, ax in zip(['g_laugh1', 'g_laugh2', 'g_dance1', 'g_dance2'], g2, [36, 19, 38, 23]):
-    add(name, im, ax)
+for name, im in zip(['g_laugh1', 'g_laugh2', 'g_dance1', 'g_dance2'], g2):
+    add(name, im, feet_cx(im))
 
 # --- extra Galya animations (sheets with real alpha) -------------------
 def jacket_cx(im):
@@ -31,7 +56,7 @@ def jacket_cx(im):
 
 def add_auto(names, lst):
     for name, (im, _) in zip(names, lst):
-        add(name, im, jacket_cx(im))
+        add(name, im, feet_cx(im))
 
 
 def biggest_blob(im):
@@ -49,9 +74,13 @@ def biggest_blob(im):
 
 
 wolf = cut.cut(None, 5, 0.2, path='art/galya_wolf.png', alpha=True)
-wolf[1] = (biggest_blob(wolf[1][0]), None)
-wolf[2] = (biggest_blob(wolf[2][0]), None)
-add_auto(['g_wolf0', 'g_crouch', 'g_crouch2', 'g_howl1', 'g_howl2'], wolf)
+add_auto(['g_wolf0'], wolf[:1])
+# howl sequence: the pan lies on the floor in all four frames, so anchor them by the pan to keep it still
+off = float(np.median([pan_cx(im) - feet_cx(im) for im, _ in wolf[1:]]))
+for name, (im, _) in zip(['g_howl0a', 'g_howl0b', 'g_howl1', 'g_howl2'], wolf[1:]):
+    add(name, im, pan_cx(im) - off)
+# player crouch: same poses without the pan (she keeps it on her back)
+add_auto(['g_crouch', 'g_crouch2'], [(biggest_blob(wolf[1][0]), None), (biggest_blob(wolf[2][0]), None)])
 add_auto(['g_vod%d' % i for i in range(8)], cut.cut(None, 8, 0.2, path='art/galya_vodka.png', alpha=True))
 add_auto(['g_mask0', 'g_mask1', 'g_mask2'], cut.cut(None, 3, 0.2, path='art/galya_mask.png', alpha=True))
 add_auto(['g_shake1', 'g_shake2'], cut.cut(None, 2, 0.2, path='art/galya_shake.png'))

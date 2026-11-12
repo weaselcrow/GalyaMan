@@ -457,6 +457,7 @@ function drawRabbit(r) {
   if (r.ko > 0) {
     const k = 1 - r.ko / .13;
     spr('r_ko', r.x, r.y, r.koDir < 0, { sx: r.scale });
+    if (r.ko > .07) spr('r_ko', r.x, r.y, r.koDir < 0, { sx: r.scale, img: atlasW, a: .85 });
     // глаза вылезают
     const hx = r.x + r.koDir * 8 * r.scale, hy = r.y - 30 * r.scale, d = (6 + k * 16) * r.scale;
     for (const s of [-1, 1]) { const ex = hx + r.koDir * d * .7 + s * 3, ey = hy - d * .5 + s * 5 * r.scale; g.strokeStyle = '#d81b2a'; g.lineWidth = 2; g.beginPath(); g.moveTo(hx, hy); g.lineTo(ex, ey); g.stroke(); drawEye(ex, ey, Math.max(3, 4 * r.scale), gameT * 30); }
