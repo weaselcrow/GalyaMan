@@ -113,7 +113,7 @@ function buildLevel1() {
   rb(4052, 270, 'sit', 'мама?!', { scale: .6 }); rb(4078, 270, 'sit', 'а папа тоже стал шапкой?', { scale: .6 }); rb(4104, 270, 'sit', 'тётя, а вы добрая?', { scale: .6 });
   l.pot = { x: 4226, y: 270 };
   l.checks.push({ x: 4340, on: false });
-  l.signs.push({ x: 4384, y: 226, w: 190, lines: ['ТОП ДОНАТЕРОВ ГАЛИ:', '1. ПУШИСТИК', '2. ДЕД (ВОРОТНИК)'] });
+  l.signs.push({ x: 4384, y: 226, w: 190, lines: ['ТОП ДОНАТЕРОВ ГАЛИ:', '1. НУДЛ ДУДЛ', '2. ДЕД (ВОРОТНИК)'] });
   rb(4450, FY, 'sit', 'я донатил! у меня чек есть!');
   // F: движущиеся платформы
   pl(4650, 350, 72); mv(4760, 4850, 340, 84, 46); pl(4975, 326, 84); mv(5092, 5138, 340, 84, 40);
@@ -128,8 +128,8 @@ function buildLevel1() {
   rb(6110, FY, 'sit', 'жена ушла на йогу. в 2019-м');
   rb(6230, FY, 'run', 'бегите! это не стрим, это по-настоящему!');
   bl(6300, 326, 70, 60); pl(6400, 262, 70); pl(6500, 200, 72); cs(6536, 200, 'hats', 1);
-  rb(6690, FY, 'sit', 'дальше Пушистик. он нас любит. не трогай');
-  l.signs.push({ x: 6716, y: 250, w: 136, lines: ['ПУШИСТИК →', '(он защитит)'] });
+  rb(6690, FY, 'sit', 'дальше Нудл Дудл. она за нас молится');
+  l.signs.push({ x: 6716, y: 250, w: 136, lines: ['НУДЛ ДУДЛ →', '(она защитит)'] });
   // чемоданы для красоты
   [140, 700, 905, 1432, 2300, 2330, 2315, 2850, 3230, 3550, 4300, 4560, 5290, 5480, 5505, 5492, 5900, 6160, 6620, 6800].forEach((x, i) => {
     const pile = (i === 6 || i === 15); l.deco.push({ x, y: pile ? FY - 17 : FY, ci: i % 5, s: .8 });
@@ -139,7 +139,7 @@ function buildLevel1() {
   return l;
 }
 // Список уровней. Новый уровень добавляется строкой LEVELS.push({...}) в своём файле в js/levels/.
-const LEVELS = [{ name: 'КРЕПОСТЬ ПУШИСТЫХ', sub: 'босс: Пушистик', build: buildLevel1, boss: true }];
+const LEVELS = [{ name: 'КРЕПОСТЬ ПУШИСТЫХ', sub: 'босс: Нудл Дудл', build: buildLevel1, boss: true }];
 function buildBossLevel() {
   const l = { w: W, fy: FYB, solids: [], rabbits: [], cases: [], signs: [], zaps: [], spikes: [], movers: [], deco: [], checks: [], pits: [], boss: true, name: 'ЛОГОВО' };
   l.solids.push({ x: -200, y: FYB, w: W + 400, h: 120, k: 'f', hid: true }, { x: -60, y: -300, w: 68, h: 800, k: 'b', hid: true }, { x: W - 8, y: -300, w: 68, h: 800, k: 'b', hid: true });
@@ -227,10 +227,12 @@ function gore(x, y, dir, scale, big, fin) {
   for (let i = 0; i < (big ? 26 : 5); i++) gibs.push({ k: 'm', x, y, vx: rnd(-240, 240) * (big ? 2 : 1) + dir * 60, vy: -rnd(140, big ? 620 : 400), rot: rnd(6.28), vr: rnd(-10, 10), sc: rnd(.8, 1.5) * (big ? 1.8 : 1), c: pick(['#e0525c', '#c2121f', '#f08a94']), rest: false, life: big ? 40 : 12, tr: 0 });
   if (gibs.length > 150) gibs.splice(0, gibs.length - 150);
 }
+function featherPuff(x, y, n, dir) { for (let i = 0; i < n; i++) parts.push({ k: 'f', x: x + rnd(-16, 16), y: y + rnd(-22, 16), vx: (dir || 0) * rnd(20, 90) + rnd(-90, 90), vy: -rnd(60, 200), s: 1, c: '#fff', life: rnd(1.8, 3.2), ph: rnd(6.28), g: 0 }); }
 function burst(x, y, n, cols, sp, life, grav) { for (let i = 0; i < n; i++) { const a = rnd(6.28), v = rnd(sp * .3, sp); parts.push({ k: 'p', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - sp * .3, s: rint(1, 3), c: pick(cols), life: rnd(life * .5, life), g: grav === undefined ? 600 : grav }); } }
 function updateFx(dt) {
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i]; p.life -= dt; p.vy += (p.k === 'b' ? 980 : p.g) * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.k === 'f') { p.vy = Math.min(p.vy + 300 * dt, 34); p.vx *= Math.pow(.15, dt); p.x += Math.sin(gameT * 4 + p.ph) * 28 * dt; if (L.boss && p.y > L.fy - 2) { p.y = L.fy - 2; p.vy = 0; } }
     let kill = p.life <= 0 || p.y > H + 30;
     if (!kill && p.k === 'b') {
       const s = solidAt(p.x, p.y);
@@ -298,7 +300,7 @@ function updateFx(dt) {
 }
 
 // ---------- стрим: донаты от симпов ----------
-const NICKS = ['Степашка_1987', 'simp_na_ipoteku', 'Геннадий_Олегович', 'xX_Пушистик_Xx', 'верный_зая', 'модер_чата', 'ипотечник228', 'КроликБезЖены', 'жена_не_знает', 'топ_донатер_Гали'];
+const NICKS = ['Степашка_1987', 'simp_na_ipoteku', 'Геннадий_Олегович', 'фанат_Нудл_Дудл', 'верный_зая', 'модер_чата', 'ипотечник228', 'КроликБезЖены', 'жена_не_знает', 'топ_донатер_Гали'];
 const DON_MSG = ['на ипотеку, Галя', 'закрой свою ипотеку. я свою не смог', 'жене не говори', 'красиво ты его', 'это был мой сосед. спасибо', 'привет передай на стриме', 'я следующий, да?', 'люблю тебя, Галя. жена спит', 'взял кредит на этот донат', 'ещё одного, пожалуйста', 'Галя, скажи моё имя'];
 const DON_SUM = ['100 р.', '300 р.', '500 р.', '1 000 р.', '5 000 р.', 'всю зарплату', 'детские', 'кредит'];
 function donate(nick, sum, msg) {
@@ -368,7 +370,7 @@ function startCelebrate() {
   else { sfx.laugh(5, 600); playSong('dance'); }
   let aweN = 0;
   for (const r of L.rabbits) if (!r.dead && inView(r.x)) { r.awe = true; r.vx = 0; if (aweN < 2 && Math.random() < .6) { aweN++; say(r, pick(cele.kind === 'howl' ? AWE_HOWL : AWE), 2.4); } else r.bub = null; }
-  if (boss && L.boss && !boss.dead) say(boss, cele.kind === 'howl' ? 'ОНА ЧТО, ВОЕТ?!' : cele.kind === 'dance' ? 'ПОЧЕМУ ОНА ТАНЦУЕТ?!' : pick(['ЭТО НЕ СМЕШНО!', 'ОНИ БЫЛИ МОИМИ ДРУЗЬЯМИ…']), 2.4);
+  if (boss && L.boss && !boss.dead) say(boss, cele.kind === 'howl' ? 'ЧАТ, ОНА ВОЕТ…' : cele.kind === 'dance' ? 'ЧАТ, ПОЧЕМУ ОНА ТАНЦУЕТ?!' : pick(['ЭТО НЕ СМЕШНО!', 'ОНИ БЫЛИ МОИМИ ЗРИТЕЛЯМИ…']), 2.4);
 }
 function endCelebrate() {
   mode = 'play'; for (const r of L.rabbits) r.awe = false;
@@ -582,4 +584,11 @@ function drawSouls() {
     g.globalAlpha = a; R(x - 9 * o.sc, o.y - 34 * o.sc, 18 * o.sc, 3, '#ffe36b'); g.globalAlpha = 1;
     if (o.t > .3 && o.t < 3) bubble(o.s, x - camR, o.y - 38 * o.sc, { prio: 2, size: 8, max: 16, bg: '#eaf6ff', color: '#3a5a8a' });
   }
+}
+
+function drawFeather(p) {
+  const x = Math.round(p.x), y = Math.round(p.y), tilt = Math.sin(gameT * 4 + p.ph) > 0 ? 1 : -1;
+  g.globalAlpha = clamp(p.life * 1.5, 0, 1);
+  R(x - 3, y, 7, 2, '#ffffff'); R(x - 3 + (tilt > 0 ? 4 : 0), y - 1, 3, 1, '#ffffff'); R(x - 3, y + 2, 7, 1, '#cfc6de');
+  g.globalAlpha = 1;
 }

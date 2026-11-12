@@ -18,7 +18,7 @@ function attackHits() {
     if (c.open || c.fall || P.atkSet.has(c)) continue;
     if (c.x + 14 > x0 && c.x - 14 < x1 && c.y > y0 && c.y - 30 < y1) { P.atkSet.add(c); openCase(c, P.face); sfx.bonk(); }
   }
-  if (boss && L.boss && !boss.dead && !P.atkSet.has(boss) && boss.x + 54 > x0 && boss.x - 54 < x1 && boss.y > y0 && boss.y - 120 < y1) { if (hitBoss()) P.atkSet.add(boss); }
+  if (boss && L.boss && !boss.dead && !P.atkSet.has(boss) && boss.x + 48 > x0 && boss.x - 48 < x1 && boss.y > y0 && boss.y - 120 < y1) { if (hitBoss()) P.atkSet.add(boss); }
 }
 function updatePlayer(dt, ctrl) {
   if (P.bub) { P.bub.t -= dt; if (P.bub.t <= 0) P.bub = null; }
@@ -202,7 +202,7 @@ function drawIce() {
 function startTikhon() {
   let dir = (boss && boss.x < P.x) ? -1 : 1, stop = P.x - dir * 135;
   if (stop < 80 || stop > W - 80) { dir = -dir; stop = P.x - dir * 135; }
-  if (boss && Math.abs(stop - boss.x) < 115) stop = boss.x - dir * 125;   // не парковаться внутри Пушистика
+  if (boss && Math.abs(stop - boss.x) < 115) stop = boss.x - dir * 125;   // не парковаться внутри босса
   tk = { dir, x: dir > 0 ? -90 : W + 90, stop: clamp(stop, 80, W - 80), ph: 0, t: 0, bub: null, money: null, eng: 0, out: 0, sob: 0 };
   mode = 'tikhon'; modeT = 0; P.vx = 0; P.atk = 0; P.bub = null; P.idleAnim = ''; P.crouch = false; P.h = 76; stopSong(); tears = [];
 }
@@ -245,15 +245,15 @@ function drawTikhon() {
   if (k.bub) bubble(k.bub.s, k.x - camR, L.fy - 112, { prio: 5, size: k.ph === 4 ? 12 : 9, max: 16, shake: k.ph === 4 ? 2 : 0 });
 }
 
-// ---------- босс: Пушистик ----------
-const GREET = ['ОЙ! ГАЛЯ! Я ТВОЙ ТОП-ДОНАТЕР!', 'Я СМОТРЮ КАЖДЫЙ СТРИМ!', 'ЭТО Я ЗАКРЫЛ ТЕБЕ ИПОТЕКУ!', 'ДАВАЙ ДРУЖИТЬ!', 'У ТЕБЯ КРАСИВАЯ СКОВОРОДКА!', 'А Я ТЕБЕ МЕСТО ЗАНЯЛ!', 'ХОЧЕШЬ МОРКОВКУ?'];
+// ---------- босс: Нудл Дудл ----------
+const GREET = ['ОЙ! ГАЛЯ! ПРИВЕТ! Я НУДЛ ДУДЛ!', 'Я ЗАШЛА К ТЕБЕ НА СТРИМ!', 'ЧАТ, ПОЗДОРОВАЙТЕСЬ С ГАЛЕЙ!', 'Я СЕГОДНЯ В КОСПЛЕЕ ЗАЙЧИКА!', 'Я ЗА ТЕБЯ ПОМОЛИЛАСЬ!', 'А ЗАЧЕМ ТЕБЕ СКОВОРОДКА?'];
 const SCREAMS = [
-  ['АЙ! ЗА ЧТО?!', 'НЕ НАДО!', 'МНЕ ЖЕ БОЛЬНО!', 'ГАЛЯ, ТЫ ЧЕГО?!', 'Я ЖЕ ПОЗДОРОВАЛСЯ!', 'Я ЖЕ ПОДПИСЧИК ТРЕТЬЕГО УРОВНЯ!', 'ОЙ-ОЙ-ОЙ!'],
-  ['НЕЕЕТ ГАААЛЯЯЯ!', 'НЕ НАДООО!', 'ЗА ЧТООО?!', 'ПОЖАЛУЙСТААА!', 'Я ТЕБЕ НЕ СТЕПАШКА! …ХОТЯ ДА', 'МАМАААА!', 'ХВАТИИИТ!'],
-  ['Я ЖЕ ТЕБЕ ЦВЕТЫ ПРИНЁС!', 'Я ЗАКРЫЛ ТВОЮ ИПОТЕКУ, А СВОЮ НЕТ!', 'Я САМ ИХ СОБИРАЛ!', 'Я ЖЕ ТЕБЕ МОРКОВКУ ПРИНЁС!', 'НЕЕЕЕТ ГААААЛЯЯЯЯ!', 'МЫ МОГЛИ ДРУЖИТЬ!']
+  ['АЙ! ЗА ЧТО?!', 'ГАЛЯ, ТЫ ЧЕГО?!', 'ЧАТ, ОНА МЕНЯ БЬЁТ!', 'Я ЖЕ ЗАШЛА К ТЕБЕ НА СТРИМ…', 'Я ЖЕ ПОЗДОРОВАЛАСЬ!', 'ЭТО КОСПЛЕЙ! Я НЕ НАСТОЯЩИЙ ЗАЙЧИК!', 'ОЙ-ОЙ-ОЙ!'],
+  ['НЕЕЕТ ГАААЛЯЯЯ!', 'МОДЕРЫ, БАНЬТЕ ЕЁ!', 'ГАЛЯ, Я ЖЕ ЗА ТЕБЯ МОЛИЛАСЬ!', 'ЧАТ, ВЫЗЫВАЙТЕ ПОМОЩЬ!', 'Я ЖЕ ТЕБЕ ДОНАТИЛА!', 'НЕ НАДООО!', 'ЗА ЧТООО?!'],
+  ['Я ЖЕ ТЕБЕ ЦВЕТЫ ПРИНЕСЛА!', 'Я САМА ИХ СОБИРАЛА!', 'Я ЖЕ ТЕБЯ ПРОСТИЛА!', 'ЧАТ, ПРОСТИТЕ ЕЁ…', 'НЕЕЕЕТ ГААААЛЯЯЯЯ!', 'МЫ МОГЛИ БЫ ДЕЛАТЬ СОВМЕСТКИ!']
 ];
-const BEG = ['пожалуйста, не надо…', 'я хороший, честно', 'давай просто поговорим?', 'я никому не скажу', 'хочешь, я уйду?', 'у меня есть печенье…'];
-const OFFER = ['ЭТО ТЕБЕ…', 'РОМАШКИ. ТВОИ ЛЮБИМЫЕ?', 'Я УЕДУ. ВОТ ЧЕМОДАН.', 'Я НАПИСАЛ ТЕБЕ ОТКРЫТКУ', 'МЫ ЕЩЁ МОЖЕМ ДРУЖИТЬ'];
+const BEG = ['пожалуйста, не надо…', 'я хорошая, честно', 'давай просто поговорим?', 'я выключу стрим, хочешь?', 'я за тебя помолюсь…', 'у меня донат-цель не закрыта…'];
+const OFFER = ['ЭТО ТЕБЕ…', 'РОМАШКИ. ТВОИ ЛЮБИМЫЕ?', 'Я УЕДУ. ВОТ ЧЕМОДАН.', 'Я НАПИСАЛА ТЕБЕ ОТКРЫТКУ', 'МЫ ЕЩЁ МОЖЕМ ДРУЖИТЬ'];
 const MERCY = ['ГАЛЯ НЕ ЗНАЕТ ЭТОГО СЛОВА', 'КНОПКА ДЛЯ КРАСОТЫ', 'ХА. НЕТ.', 'ПОЩАДА ЗАКОНЧИЛАСЬ', 'КНОПКА СЛОМАЛАСЬ'];
 function startBoss() {
   L = buildBossLevel(); cam = 0; look = 0;
@@ -261,7 +261,7 @@ function startBoss() {
   Object.assign(P, { x: 70, y: FYB, vx: 0, vy: 0, hp: P.maxhp, face: 1, inv: 0, hurtT: 0, atk: 0, onGround: true, idleT: 0, bub: null, masked: 0, crouch: false, h: 76, idleAnim: '', safeX: 70, safeY: FYB });
   boss = { x: 610, y: FYB, hp: 20, max: 20, state: 'greet', t: 0, phase: 1, face: -1, inv: 0, fl: 0, bub: null, line: 0, sline: 0, hopFrom: 0, hopTo: 0, hopT: 0, hops: 0, dead: false, rainT: 0, grief: 0, started: false, mercy: 0, mercyGone: 0, waveT: 0, card: 0, scale: 1 };
   mode = 'play'; modeT = 0; scene = 'play'; chain = 0; pendingCele = false; ice = null; iceSeen = true; stopSong();
-  banner = { s: 'ЛОГОВО ПУШИСТИКА', sub: 'он тебя ждал', t: 2.4 };
+  banner = { s: 'ЛОГОВО НУДЛ ДУДЛ', sub: 'она за тебя молилась', t: 2.4 };
 }
 function spawnTear(x, o) { tears.push(Object.assign({ x: x === undefined ? (Math.random() < .7 ? clamp(P.x + rnd(-170, 170), 26, W - 26) : rnd(26, W - 26)) : x, y: -16, vx: 0, vy: rnd(250, 330), g: 0 }, o || {})); }
 function startHop() {
@@ -273,16 +273,15 @@ function startHop() {
 function spawnSupport() {
   if (L.rabbits.length >= 3) return;
   const side = Math.random() < .5 ? -1 : 1;
-  const r = mkRabbit(side < 0 ? 40 : W - 40, -10, 'support', pick(['Пушистик, держись!', 'я принёс платочек! и завещание', 'мы с тобой! недолго', 'не плачь, она это любит']), { tx: 0 });
+  const r = mkRabbit(side < 0 ? 40 : W - 40, -10, 'support', pick(['Нудл Дудл, держись!', 'я принёс платочек! и завещание', 'мы с тобой! недолго', 'не плачь, она это любит']), { tx: 0 });
   r.side = side; r.onGround = false; r.said = true; say(r, r.line, 2.4); L.rabbits.push(r);
 }
 function hitBoss() {
   const b = boss; if (b.dead || b.inv > 0 || b.state === 'hop' || b.state === 'p3' || mode !== 'play') return false;
-  b.hp--; b.inv = .5; b.fl = .2; hitstop = .07; shake = Math.max(shake, 9); sfx.bonk(); sfx.splat();
-  const hx = b.x + sign(P.x - b.x) * 40, hy = b.y - 60, dir = sign(b.x - P.x);
-  for (let i = 0; i < 30; i++) { const a = rnd(-Math.PI, 0), sp = rnd(60, 380); parts.push({ k: 'b', x: hx, y: hy + rnd(-20, 20), vx: Math.cos(a) * sp + dir * 60, vy: Math.sin(a) * sp - 60, s: rint(2, 4), c: pick(BLOOD), life: rnd(1.5, 3) }); }
-  if (Math.random() < .4) lensSplat(1);
-  if (b.hp % 4 === 0) gibs.push({ k: 'm', x: hx, y: hy, vx: dir * rnd(60, 200), vy: -rnd(200, 380), rot: 0, vr: 8, sc: 1.6, c: '#fff', rest: false, life: 20, tr: 0 });
+  b.hp--; b.inv = .5; b.fl = .2; hitstop = .07; shake = Math.max(shake, 9); sfx.bonk();
+  const hx = b.x + sign(P.x - b.x) * 20, hy = b.y - 70, dir = sign(b.x - P.x);
+  featherPuff(hx, hy, 9, dir);
+  for (let i = 0; i < 12; i++) { const a = rnd(-Math.PI, 0), sp = rnd(80, 260); parts.push({ k: 'p', x: b.x + rnd(-8, 8), y: b.y - 96 + rnd(-6, 6), vx: Math.cos(a) * sp + dir * 50, vy: Math.sin(a) * sp - 60, s: 2, c: pick(['#8fdcff', '#c8f0ff', '#4ab0e8']), life: rnd(.5, .9), g: 700 }); }
   floater(pick(BONK), hx, hy - 50, { color: '#ffe36b', size: 16, t: .55, rot: rnd(-.3, .3), vy: -60 });
   if (!b.started) { b.started = true; playSong('boss'); banner = null; }
   if (b.hp <= 0) { startBossDeath(); return true; }
@@ -309,7 +308,7 @@ function updateBoss(dt) {
     case 'cry': {
       b.rainT -= dt;
       if (b.rainT <= 0) { b.rainT = ph === 1 ? .3 : ph === 2 ? .17 : .24; spawnTear(); sfx.tear(); }
-      if ((b.t * 20 | 0) % 2) for (const sd of [-1, 1]) parts.push({ k: 'p', x: b.x + sd * rnd(44, 60), y: b.y - 6, vx: sd * rnd(20, 150), vy: -rnd(60, 220), s: 2, c: pick(['#8fdcff', '#c8f0ff', '#4ab0e8']), life: .5, g: 700 });
+      if ((b.t * 20 | 0) % 2) for (const sd of [-1, 1]) parts.push({ k: 'p', x: b.x + sd * rnd(28, 40), y: b.y - 6, vx: sd * rnd(20, 150), vy: -rnd(60, 220), s: 2, c: pick(['#8fdcff', '#c8f0ff', '#4ab0e8']), life: .5, g: 700 });
       if (b.t > .32 && Math.abs(P.x - b.x) < 86 && P.y > b.y - 74) hurtPlayer(sign(P.x - b.x));
       if (b.t > (ph === 1 ? 1.7 : ph === 2 ? 2.4 : 1.8)) { if (ph === 3) { b.state = 'offer'; b.t = 0; } else startHop(); }
       break;
@@ -335,7 +334,7 @@ function updateBoss(dt) {
       break;
     }
   }
-  if (b.state !== 'hop' && b.state !== 'dying' && Math.abs(P.x - b.x) < 50 && P.y > b.y - 112) { P.x = clamp(b.x + (P.x < b.x ? -50 : 50), 22, W - 22); if (sign(P.vx) === sign(b.x - P.x)) P.vx = 0; }
+  if (b.state !== 'hop' && b.state !== 'dying' && Math.abs(P.x - b.x) < 44 && P.y > b.y - 112) { P.x = clamp(b.x + (P.x < b.x ? -44 : 44), 22, W - 22); if (sign(P.vx) === sign(b.x - P.x)) P.vx = 0; }
   // слёзы
   for (let i = tears.length - 1; i >= 0; i--) {
     const t = tears[i]; t.vy += t.g * dt; t.x += t.vx * dt; t.y += t.vy * dt;
@@ -353,24 +352,37 @@ function updateBoss(dt) {
   }
   if (b.mercyGone) b.mercyGone += dt;
 }
+// смерть Нудл Дудл (время сцены в modeT):
+// 0–0.45 замедление после последнего удара · до 4.3 на коленях, последние слова, нимб мигает
+// 4.3 ложится, перья, грустная мелодия · 5.6 душа поднимается в луче · ~10.5 с неба падает маска
+const N_KNEEL = .45, N_LIE = 4.3, N_SOUL = 5.6, N_FADE = 9.6, N_MASK = 10.4;
 function startBossDeath() {
   const b = boss; mode = 'bossdeath'; modeT = 0; b.state = 'dying'; b.bub = null; stopSong(); tears = []; puddles = []; P.atk = 0;
-  wail(2.5, 1500, 420, .26, 10, 110);
-  for (const r of L.rabbits) { r.awe = true; r.vx = 0; }
+  slow = .25; flash = .45; b.fade = 1; b.soulT = 0;
+  featherPuff(b.x, b.y - 80, 14, sign(b.x - P.x));
+  for (const r of L.rabbits) { r.awe = true; r.vx = 0; r.bub = null; }
   b.hatY = null; b.won = 0;
 }
 function updateBossDeath(dt) {
-  const b = boss; P.vx *= .9; P.vy = Math.min(900, P.vy + GRAV * dt); collide(P, dt);
-  if (!b.dead) {
-    if (modeT < 2.5) { shake = Math.max(shake, 3 + modeT * 3); if ((modeT * 14 | 0) !== ((modeT - dt) * 14 | 0)) { parts.push({ k: 'b', x: b.x + rnd(-40, 40), y: b.y - rnd(20, 100), vx: rnd(-200, 200), vy: -rnd(100, 300), s: 3, c: pick(BLOOD), life: 2 }); flash = Math.max(flash, .12); } }
-    else {
-      b.dead = true; const dir = sign(b.x - P.x);
-      gore(b.x, b.y - 62, dir, 1, true); wallSplat(b.x, b.y - 90, true); lensSplat(16, true); shake = 22; flash = 1; sfx.boom(); sfx.splat();
-      for (let i = 0; i < 26; i++) gibs.push({ k: 'm', x: b.x, y: b.y - 60, vx: rnd(-300, 300), vy: -rnd(200, 600), rot: 0, vr: rnd(-9, 9), sc: 1.1, c: pick(['#fff', '#ffe36b', '#ff9ec4']), rest: false, life: 30, tr: 9 });
-      for (const r of L.rabbits) say(r, pick(['ПУШИСТИК!!!', 'нет…', '…']), 2.5);
-      memorial.push(['Пушистик', 'топ-донатер. просто хотел дружить']); donate('xX_Пушистик_Xx', 'всё, что было', 'прощальный донат. люблю тебя, Галя'); stats.kills++;
-    }
-  } else if (b.hatY === null) { if (modeT > 5) { b.hatY = -70; b.hatV = 0; } }
+  const b = boss, t = modeT, at = m => t >= m && t - dt < m;
+  P.vx *= .9; P.vy = Math.min(900, P.vy + GRAV * dt); collide(P, dt);
+  if (!b.won) P.face = b.x < P.x ? -1 : 1;
+  if (b.bub) { b.bub.t -= dt; if (b.bub.t <= 0) b.bub = null; }
+  if (t >= N_KNEEL && slow < 1) slow = 1;
+  if (at(N_KNEEL)) { sfx.thud(); say(b, 'чат… я же за вас молилась…', 1.9); }
+  if (at(N_KNEEL + 2)) say(b, 'Галя… я тебя прощаю…', 1.7);
+  if (at(N_LIE)) {
+    b.bub = null; b.dead = true; stats.kills++; sfx.thud(); featherPuff(b.x, b.y - 18, 18, 0); playSong('sad');
+    memorial.push(['Нудл Дудл', 'зашла на стрим. ушла на небо']);
+    for (const r of L.rabbits) say(r, pick(['нет…', 'она же святая…', '…']), 2.5);
+  }
+  if (at(N_SOUL)) [1047, 1319, 1568, 2093].forEach((f, i) => tn('sine', f, f, .5, .1, i * .12));
+  if (t >= N_SOUL) {
+    b.soulT += dt;
+    if (Math.random() < .5) parts.push({ k: 'p', x: b.x + rnd(-34, 34), y: soulY(b) - rnd(0, 120), vx: rnd(-10, 10), vy: -rnd(20, 60), s: rint(1, 2), c: pick(['#fff6c8', '#ffe36b', '#ffffff']), life: rnd(.6, 1.2), g: -30 });
+  }
+  if (t >= N_FADE && b.fade > 0) { b.fade = Math.max(0, b.fade - dt * .8); if (Math.random() < .4) parts.push({ k: 'p', x: b.x + rnd(-40, 40), y: FYB - rnd(4, 30), vx: 0, vy: -rnd(20, 50), s: 1, c: '#fff6c8', life: .8, g: -20 }); }
+  if (b.hatY === null) { if (t >= N_MASK) { b.hatY = -70; b.hatV = 0; } }
   else if (!b.won) {
     b.hatV += 900 * dt; b.hatY += b.hatV * dt;
     if (b.hatY >= P.y - 60) { b.won = .001; P.masked = 1; sfx.thud(); shake = 8; playSong('win'); burst(P.x, P.y - 80, 20, ['#fff', '#ffe36b'], 200, .7); }
@@ -379,44 +391,66 @@ function updateBossDeath(dt) {
     if (b.won > 3.4 && mode === 'bossdeath') { cele.n = 99; startCelebrate(); cele.title = 'ГАЛЯ МЕН'; L.after = true; }
   }
 }
+const soulY = b => FYB - 14 - 14 * b.soulT - 26 * b.soulT * b.soulT;
+function drawNoodleDeath(b) {
+  const t = modeT, flip = b.face < 0;
+  if (t < N_KNEEL) {
+    spr('n_hit', b.x + ((gameT * 30 | 0) % 2 ? 1 : -1), b.y, flip);
+    spr('n_hit', b.x, b.y, flip, { img: atlasW, a: .5 * (1 - t / N_KNEEL) });
+  } else if (t < N_LIE) {
+    spr('n_kneel', b.x, b.y, flip);
+    // нимб мигает: то вспыхивает, то гаснет
+    const hx = b.x + (flip ? 12 : -12), hy = b.y - 106, on = (gameT * 6 | 0) % 3 === 0 || ((gameT * 23 | 0) % 7 === 0);
+    if (on) { g.save(); g.beginPath(); g.ellipse(hx, hy, 13, 5, 0, 0, 6.3); g.globalAlpha = .3; g.fillStyle = '#fff6a8'; g.fill(); g.globalAlpha = .95; g.strokeStyle = '#fffbe0'; g.lineWidth = 2; g.stroke(); g.globalAlpha = .25; g.lineWidth = 7; g.stroke(); g.restore(); }
+    if (b.bub) bubble(b.bub.s, b.x, b.y - 124, { prio: 5, size: 8, max: 18, bg: '#eaf6ff', color: '#3a5a8a' });
+  } else {
+    if (t >= N_SOUL && soulY(b) > -170) {
+      // луч света сверху
+      const k = Math.min(1, (t - N_SOUL) * 1.6) * (soulY(b) < 40 ? Math.max(0, (soulY(b) + 170) / 210) : 1);
+      g.globalAlpha = .16 * k; R(b.x - 40, 0, 80, FYB, '#fff6c8'); g.globalAlpha = .22 * k; R(b.x - 22, 0, 44, FYB, '#fffbe0'); g.globalAlpha = .3 * k; R(b.x - 8, 0, 16, FYB, '#ffffff'); g.globalAlpha = 1;
+    }
+    if (b.fade > 0) spr('n_lie', b.x, b.y, flip, { a: b.fade });
+    if (t >= N_SOUL && soulY(b) > -170) {
+      const sy = soulY(b), sx = b.x + Math.sin(b.soulT * 2) * 6, a = .72 + Math.sin(gameT * 5) * .12;
+      spr('n_spirit', sx, sy, flip, { a });
+      spr('n_spirit', sx, sy, flip, { img: atlasW, a: .12 + Math.sin(gameT * 5) * .06 });
+    }
+  }
+}
 function drawBoss() {
   const b = boss; if (!b || !L.boss) return;
   // лужи и метки слёз
   for (const p of puddles) { const a = Math.min(1, p.t); g.globalAlpha = .55 * a; R(p.x - p.w / 2, FYB - 1, p.w, 5, '#8fdcff'); R(p.x - p.w / 2 + 6, FYB, p.w - 12, 2, '#e6f8ff'); g.globalAlpha = 1; }
   for (const t of tears) if (!t.g) { const k = clamp(t.y / FYB, 0, 1), w = 4 + k * 12; R(t.x - w / 2, FYB + 1, w, 2, (gameT * 16 | 0) % 2 ? '#ff5b6b' : '#ffd0d6'); }
-  if (!b.dead) {
-    let name = 'b_wave', ox = 0, oy = 0;
-    if (b.state === 'dying') { name = 'b_cry'; ox = rnd(-4, 4) * Math.min(1, modeT); oy = rnd(-3, 3) * Math.min(1, modeT); }
-    else if (b.fl > 0 || b.state === 'hurt' || b.state === 'cry' || b.grief > 0) { name = 'b_cry'; if (b.state === 'hurt') ox = (gameT * 40 | 0) % 2 ? 3 : -3; }
-    else if (b.state === 'hop' || b.state === 'beg' || b.state === 'p3') { name = 'b_beg'; ox = (gameT * 36 | 0) % 2 ? 1 : -1; }
-    else if (b.state === 'offer') { name = 'b_flowers'; oy = -Math.abs(Math.sin(gameT * 3)) * 2; }
+  if (b.state === 'dying') drawNoodleDeath(b);
+  else if (!b.dead) {
+    let name = 'n_wave', ox = 0, oy = 0;
+    if (b.state === 'hurt') { name = 'n_hit'; ox = (gameT * 40 | 0) % 2 ? 2 : -2; }
+    else if (b.state === 'cry' || b.grief > 0) name = 'n_cry';
+    else if (b.state === 'hop' || b.state === 'beg' || b.state === 'p3') { name = 'n_beg'; ox = (gameT * 36 | 0) % 2 ? 1 : -1; }
+    else if (b.state === 'offer') { name = 'n_flowers'; oy = -Math.abs(Math.sin(gameT * 3)) * 2; }
     else oy = -Math.abs(Math.sin(gameT * 4)) * 3;
     if (ice && mode === 'ice') b.face = ice.x < b.x ? -1 : 1;
     const flip = b.face < 0;
-    if (b.phase === 3 && b.state !== 'dying') drawCase({ x: b.x - b.face * 92, y: FYB, ci: 4, scale: 1, open: false, bump: 0 });
+    if (b.phase === 3) drawCase({ x: b.x - b.face * 74, y: FYB, ci: 4, scale: 1, open: false, bump: 0 });
     // тень
-    g.globalAlpha = .3; R(b.x - 50, FYB - 2, 100, 5, '#000'); g.globalAlpha = 1;
+    g.globalAlpha = .3; R(b.x - 34, FYB - 2, 68, 4, '#000'); g.globalAlpha = 1;
     b.sq = b.sq > 0 ? Math.max(0, b.sq - .02) : 0;
     const bq = Math.max(0, b.sq), bsx = 1 + bq * .45, bsy = 1 - bq * .45;
     spr(name, b.x + ox, b.y + oy, flip, { sx: bsx, sy: bsy });
     if (b.fl > 0.08) spr(name, b.x + ox, b.y + oy, flip, { img: atlasW, a: .8 });
-    if (b.state === 'dying' && (modeT * 12 | 0) % 2) spr(name, b.x + ox, b.y + oy, flip, { img: atlasW, a: Math.min(.9, modeT * .35) });
     if (b.bub) bubble(b.bub.s, b.x, b.y - 150, { prio: 5, size: b.state === 'hurt' || b.grief > 0 ? 12 : 10, max: 16, shake: b.state === 'hurt' || b.state === 'cry' ? 2 : 0, color: b.state === 'hurt' ? '#a3111f' : '#16161d' });
-    if (b.card > 0) { const cx = b.x + b.face * 84, cy = b.y - 120 + Math.sin(gameT * 3) * 3; R(cx - 44, cy - 22, 88, 44, '#16161d'); R(cx - 42, cy - 20, 84, 40, '#fff6e0'); spr('heart_s', cx, cy - 2, false); T('ГАЛЕ ОТ', cx, cy + 5, { size: 7, color: '#a3111f' }); T('ПУШИСТИКА', cx, cy + 14, { size: 7, color: '#a3111f' }); }
+    if (b.card > 0) { const cx = b.x + b.face * 76, cy = b.y - 120 + Math.sin(gameT * 3) * 3; R(cx - 44, cy - 22, 88, 44, '#16161d'); R(cx - 42, cy - 20, 84, 40, '#fff6e0'); spr('heart_s', cx, cy - 2, false); T('ГАЛЕ ОТ', cx, cy + 5, { size: 7, color: '#a3111f' }); T('НУДЛ ДУДЛ', cx, cy + 14, { size: 7, color: '#a3111f' }); }
   }
   for (const t of tears) { const x = Math.round(t.x), y = Math.round(t.y); g.fillStyle = '#16161d'; g.beginPath(); g.moveTo(x, y - 13); g.lineTo(x + 7, y - 2); g.arc(x, y - 2, 7, 0, Math.PI); g.lineTo(x, y - 13); g.fill(); g.fillStyle = '#6fc8ff'; g.beginPath(); g.moveTo(x, y - 10); g.lineTo(x + 5, y - 2); g.arc(x, y - 2, 5, 0, Math.PI); g.lineTo(x, y - 10); g.fill(); R(x - 2, y - 4, 2, 3, '#e6f8ff'); }
   if (b.hatY !== null && b.hatY !== undefined && !b.won) spr('mask', P.x, b.hatY, false, { rot: Math.sin(gameT * 5) * .25 });
-  if (b.state === 'dying' && !b.dead) {
-    const s = 'НЕЕЕЕЕЕЕТ ГААААЛЯЯЯЯЯ', n = Math.min(s.length, (modeT * 11 | 0));
-    T(s.slice(0, n), W / 2 + rnd(-3, 3), 120 + rnd(-3, 3), { size: 22 + modeT * 5, color: '#fff', stroke: '#a3111f', sw: 6 });
-  }
 }
 function drawBossHud() {
   const b = boss; if (!b || !L.boss || !b.started) return;
   if (!b.dead) {
-    T('ПУШИСТИК', W / 2, 16, { size: 9, color: '#ffd0e8', stroke: '#16161d' });
+    T('НУДЛ ДУДЛ', W / 2, 16, { size: 9, color: '#ffd0e8', stroke: '#16161d' });
     OV.push(c => { c.fillStyle = '#16161d'; c.fillRect(W / 2 - 152, 26, 304, 12); for (let i = 0; i < b.max; i++) { c.fillStyle = i < b.hp ? (b.phase === 3 ? '#ff5b6b' : b.phase === 2 ? '#ffb35b' : '#ff9ec4') : '#3a2a44'; c.fillRect(W / 2 - 150 + i * 15, 28, 13, 8); } });
-    if (!b.mercyGone || b.mercyGone < 1.2) {
+    if ((!b.mercyGone || b.mercyGone < 1.2) && b.state !== 'dying') {
       const dy = b.mercyGone ? b.mercyGone * b.mercyGone * 400 : 0, rot = b.mercyGone ? b.mercyGone * 1.4 : 0, cr = b.mercy;
       OV.push(c => { c.save(); c.translate(W / 2, H - 22 + dy); c.rotate(rot); c.fillStyle = '#16161d'; c.fillRect(-84, -13, 168, 26); c.fillStyle = '#2d6a3a'; c.fillRect(-82, -11, 164, 22); c.fillStyle = '#3ddc6a'; c.fillRect(-82, -11, 164, 2); c.font = '9px PS2P,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#eaffef'; c.fillText((TOUCH ? '' : 'ENTER: ') + 'ПОЩАДИТЬ', 0, 1); c.strokeStyle = '#16161d'; c.lineWidth = 1.5; for (let i = 0; i < cr; i++) { c.beginPath(); c.moveTo(-70 + i * 34, -11); c.lineTo(-62 + i * 34, -2); c.lineTo(-68 + i * 34, 4); c.lineTo(-58 + i * 34, 11); c.stroke(); } c.restore(); });
     }
@@ -530,7 +564,7 @@ function drawPlay() {
   drawBoss();
   if (!(mode === 'dead' && P.y > H + 120)) drawPlayer();
   for (const q of gibs) if (!q.rest && inView(q.x)) drawGib(q);
-  for (const p of parts) R(p.x, p.y, p.s, p.s, p.c);
+  for (const p of parts) if (p.k === 'f') drawFeather(p); else R(p.x, p.y, p.s, p.s, p.c);
   for (const f of fxs) { const k = f.t / f.max, r = 8 + k * 26; g.strokeStyle = k < .5 ? '#fff' : '#ffe36b'; g.lineWidth = 3; g.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + .3; g.moveTo(f.x + Math.cos(a) * r * .5, f.y + Math.sin(a) * r * .5); g.lineTo(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r); } g.stroke(); }
   drawIce(); drawTikhon(); drawSouls();
   g.restore();
@@ -581,12 +615,12 @@ function drawBossIntro() {
   R(0, 0, W, H, '#12061e'); for (let i = 0; i < 12; i++) { const y = ((i * 44 + t * 240) % (H + 44)) - 44; R(0, y, W, 16, i % 2 ? '#2a0f44' : '#1d0a33'); }
   R(0, 150, W, 150, '#07030d'); R(0, 150, W, 3, '#ff5b6b'); R(0, 297, W, 3, '#ff5b6b');
   const x = t < .7 ? W + 100 - (W - 150) * (t / .7) : 250;
-  spr('b_wave', x, 296 - (t > .7 ? Math.abs(Math.sin(t * 5)) * 4 : 0), false);
-  const nm = 'ПУШИСТИК', n = clamp(((t - .9) * 9 | 0), 0, nm.length);
+  spr('n_wave', x, 296 - (t > .7 ? Math.abs(Math.sin(t * 5)) * 4 : 0), false);
+  const nm = 'НУДЛ ДУДЛ', n = clamp(((t - .9) * 9 | 0), 0, nm.length);
   T(nm.slice(0, n), 380, 196, { size: 30, color: '#fff', align: 'left', stroke: '#16161d', sw: 6 });
-  if (t > 2) T('он просто хотел дружить', 382, 234, { size: 9, color: '#ffd0e8', align: 'left' });
+  if (t > 2) T('она просто зашла на стрим', 382, 234, { size: 9, color: '#ffd0e8', align: 'left' });
   if (t > 2.5) T('ОПАСНОСТЬ: 0/10', 382, 256, { size: 8, color: '#8fdcff', align: 'left' });
-  if (t > 2.9) T('МИЛОТА: 10/10', 382, 270, { size: 8, color: '#8fdcff', align: 'left' });
+  if (t > 2.9) T('СВЯТОСТЬ: 10/10', 382, 270, { size: 8, color: '#8fdcff', align: 'left' });
   if (t > 3.3) T('ВИНА ГАЛИ: БЕСКОНЕЧНА', 382, 284, { size: 8, color: '#ff8a94', align: 'left' });
 }
 function rankOf() { const k = stats.kills; return k >= 30 ? 'КРОЛИЧИЙ АПОКАЛИПСИС' : k >= 22 ? 'МЯСНИК ИЗ ДЕРЕВНИ' : k >= 12 ? 'ЛЮБИТЕЛЬНИЦА РАГУ' : 'ПОЧТИ ВЕГАН (ПОДОЗРИТЕЛЬНО)'; }
@@ -645,7 +679,7 @@ function render() {
     for (let i = 0; i < l.n; i++) { const ox = Math.sin(l.sd + i * 2.4) * l.r * .7, oy = Math.cos(l.sd + i * 1.7) * l.r * .5, rr = l.r * (1 - i * .18); ctx.beginPath(); ctx.arc(l.x + ox, l.y + oy, rr, 0, 6.3); ctx.fill(); }
     const dl = Math.min(l.drip, l.t * 40); ctx.fillRect(l.x - l.r * .18, l.y, l.r * .36, dl + l.r * .5); ctx.beginPath(); ctx.arc(l.x, l.y + dl + l.r * .5, l.r * .24, 0, 6.3); ctx.fill();
   }
-  if (flash > 0) { ctx.fillStyle = (scene === 'play' && boss && boss.dead ? 'rgba(255,255,255,' : 'rgba(255,60,70,') + clamp(flash, 0, 1).toFixed(3) + ')'; ctx.fillRect(0, 0, W, H); }
+  if (flash > 0) { ctx.fillStyle = (scene === 'play' && boss && L.boss && boss.state === 'dying' ? 'rgba(255,255,255,' : 'rgba(255,60,70,') + clamp(flash, 0, 1).toFixed(3) + ')'; ctx.fillRect(0, 0, W, H); }
   if (fade > 0) { ctx.fillStyle = 'rgba(0,0,0,' + clamp(fade, 0, 1).toFixed(3) + ')'; ctx.fillRect(0, 0, W, H); }
 }
 

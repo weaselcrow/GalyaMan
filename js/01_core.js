@@ -384,7 +384,6 @@ function buildArt() {
   [bgB, x] = mkCanvas(W, H); x.translate(W, 0); x.scale(-1, 1); x.drawImage(bgA, 0, 0);
   for (let i = 0; i < CASE_COL.length; i++) caseSpr.push([makeCase(i, false), makeCase(i, true)]);
   rabChunks = makeChunks('r_sit', 2, 2); rabHalves = makeChunks('r_sit', 1, 2);
-  bossChunks = makeChunks('b_cry', 3, 3);
   // tiling patterns
   [c, x] = mkCanvas(16, 6); x.fillStyle = '#e9b616'; x.fillRect(0, 0, 16, 6); x.fillStyle = '#17171f';
   for (let i = -6; i < 16; i += 8) for (let r = 0; r < 6; r++) x.fillRect(i + r, 5 - r, 4, 1);

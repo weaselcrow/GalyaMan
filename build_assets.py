@@ -98,10 +98,33 @@ r = [im for im, _ in cut.cut('14', 5, 0.15)]
 for name, im, ax, ay in zip(['r_sit', 'r_tremble', 'r_give', 'r_run', 'r_ko'], r, [18, 25, 17, 31, 24], [49, 36, 48, 44, 54]):
     add(name, im, ax, ay)
 
-# --- boss ------------------------------------------------------------
-b = [im for im, _ in cut.cut('19', 4, 0.31, stems=True)]
-for name, im in zip(['b_wave', 'b_beg', 'b_cry', 'b_flowers'], b):
-    add(name, im, 64, 140)
+# --- boss: Нудл Дудл ---------------------------------------------------
+def body_anchor(im, center=False):
+    """x: middle of the feet (or of the frame), y: bottom of the body, ignoring loose sparkles and feathers"""
+    from scipy import ndimage as ndi2
+    a = np.array(im)
+    lab, n = ndi2.label(a[..., 3] > 0)
+    sizes = ndi2.sum(a[..., 3] > 0, lab, range(1, n + 1))
+    body = lab == (int(np.argmax(sizes)) + 1)
+    yb = np.where(body.any(1))[0].max()
+    xs = np.where(body[yb - 4:yb + 1].any(0))[0]
+    return (im.width / 2 if center else (xs.min() + xs.max()) / 2.0), yb + 1
+
+
+NOODLE = 0.21
+for name, (im, _) in zip(['n_wave', 'n_beg', 'n_cry', 'n_flowers'], cut.cut(None, 4, NOODLE, path='art/noodle.png', alpha=True)):
+    add(name, im, *body_anchor(im))
+def degreen(im):
+    """the death sheet has nothing green on it: neutralise green left over from the background"""
+    a = np.array(im).astype(int)
+    a[..., 1] = np.minimum(a[..., 1], np.maximum(a[..., 0], a[..., 2]) + 6)
+    return Image.fromarray(a.astype(np.uint8), 'RGBA')
+
+
+# the death sheet came out drawn a little smaller, scale it up so her head matches the fight poses
+for name, (im, _) in zip(['n_hit', 'n_kneel', 'n_lie', 'n_spirit'], cut.cut(None, 4, NOODLE * 1.12, path='art/noodle_death.png')):
+    im = degreen(im)
+    add(name, im, *body_anchor(im, center=(name == 'n_spirit')))
 
 # --- ice cream man ---------------------------------------------------
 ic = [im for im, _ in cut.cut('21', 2, 0.18)]
