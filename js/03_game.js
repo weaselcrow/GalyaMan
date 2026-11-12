@@ -56,7 +56,7 @@ function updatePlayer(dt, ctrl) {
       if (fr !== P.idleF) { P.idleF = fr; idleSfx(fr); }
       if (P.idleA > (P.idleAnim === 'vodka' ? 5.85 : 4.2)) P.idleAnim = '';
       if (P.idleAnim === 'shake') P.wigT -= dt;
-      if (P.wigT <= 0) { P.wigT = rnd(2.4, 3.8); if (Math.random() < .5) doBark(); else { say(P, pick(['ХИ-ХИ', 'АХАХА', 'ЛЯ-ЛЯ-ЛЯ', 'ХЕ-ХЕ']), 1); sfx.laugh(4, rnd(560, 680), .12); } }
+      if (P.wigT <= 0) { P.wigT = rnd(2.4, 3.8); if (Math.random() < .5) doBark(); else { say(P, pick(['СТАВЬТЕ ЛАЙК', 'СПАСИБО ЗА ДОНАТ', 'ПОДПИСЫВАЙТЕСЬ', 'ЧАТ, ПРИВЕТ', 'КТО ЗАКРОЕТ ИПОТЕКУ?']), 1); sfx.laugh(4, rnd(560, 680), .12); } }
     }
   } else { P.idleT = 0; P.wigT = 1.6; P.idleAnim = ''; }
   if (P.onGround && Math.abs(P.vx) > 30) { const st = P.runT * 4.5 | 0; P.runT += dt; if ((P.runT * 4.5 | 0) !== st && !P.crouch) parts.push({ k: 'p', x: P.x - P.face * 8, y: P.y - 2, vx: -P.face * rnd(20, 50), vy: -rnd(10, 40), s: 2, c: '#8fa3c7', life: .3, g: 0 }); } else P.runT = 0;
@@ -214,7 +214,7 @@ function updateTikhon(dt) {
   switch (k.ph) {
     case 0: k.x += k.dir * 250 * dt; if ((k.stop - k.x) * k.dir <= 0) { k.x = k.stop; k.ph = 1; k.t = 0; sfx.thud(); say(P, '?', 1); } break;
     case 1:
-      if (k.t > .7 && !k.money) { k.money = { t: 0, x0: k.x + k.dir * 20, done: false }; sfx.swing(); say(k, 'ДЕРЖИ. НА МЕЛКИЕ РАСХОДЫ', 1.5); }
+      if (k.t > .7 && !k.money) { k.money = { t: 0, x0: k.x + k.dir * 20, done: false }; sfx.swing(); donate('Тихон', '300 000 р.', 'на ипотеку. и на Японию'); say(k, 'ДЕРЖИ. НА ИПОТЕКУ', 1.5); }
       if (k.money && !k.money.done) { k.money.t += dt; if (k.money.t >= .6) { k.money.done = true; P.hp = Math.min(P.maxhp, P.hp + 3); sfx.heal(); floater('ДЕНЬГИ ЛЕЧАТ', P.x, P.y - 100, { color: '#7fe08a', t: 1.6 }); burst(P.x, P.y - 50, 16, ['#7fe08a', '#2f8a3a', '#f3c93a'], 170, .6); } }
       if (k.t > 2.4) { k.ph = 2; k.t = 0; say(k, 'ГАЛЯ, ПОЛЕТИШЬ СО МНОЙ В ЯПОНИЮ?', 2.7); sfx.blip2(); }
       break;
@@ -246,11 +246,11 @@ function drawTikhon() {
 }
 
 // ---------- босс: Пушистик ----------
-const GREET = ['ОЙ! ПРИВЕТ! Я ПУШИСТИК!', 'ТЫ ПРИШЛА ПОИГРАТЬ?', 'ДАВАЙ ДРУЖИТЬ!', 'У ТЕБЯ КРАСИВАЯ СКОВОРОДКА!', 'А Я ТЕБЕ МЕСТО ЗАНЯЛ!', 'ХОЧЕШЬ МОРКОВКУ?'];
+const GREET = ['ОЙ! ГАЛЯ! Я ТВОЙ ТОП-ДОНАТЕР!', 'Я СМОТРЮ КАЖДЫЙ СТРИМ!', 'ЭТО Я ЗАКРЫЛ ТЕБЕ ИПОТЕКУ!', 'ДАВАЙ ДРУЖИТЬ!', 'У ТЕБЯ КРАСИВАЯ СКОВОРОДКА!', 'А Я ТЕБЕ МЕСТО ЗАНЯЛ!', 'ХОЧЕШЬ МОРКОВКУ?'];
 const SCREAMS = [
-  ['АЙ! ЗА ЧТО?!', 'НЕ НАДО!', 'МНЕ ЖЕ БОЛЬНО!', 'ГАЛЯ, ТЫ ЧЕГО?!', 'Я ЖЕ ПОЗДОРОВАЛСЯ!', 'МЫ ЖЕ ДРУЗЬЯ?', 'ОЙ-ОЙ-ОЙ!'],
+  ['АЙ! ЗА ЧТО?!', 'НЕ НАДО!', 'МНЕ ЖЕ БОЛЬНО!', 'ГАЛЯ, ТЫ ЧЕГО?!', 'Я ЖЕ ПОЗДОРОВАЛСЯ!', 'Я ЖЕ ПОДПИСЧИК ТРЕТЬЕГО УРОВНЯ!', 'ОЙ-ОЙ-ОЙ!'],
   ['НЕЕЕТ ГАААЛЯЯЯ!', 'НЕ НАДООО!', 'ЗА ЧТООО?!', 'ПОЖАЛУЙСТААА!', 'Я ТЕБЕ НЕ СТЕПАШКА! …ХОТЯ ДА', 'МАМАААА!', 'ХВАТИИИТ!'],
-  ['Я ЖЕ ТЕБЕ ЦВЕТЫ ПРИНЁС!', 'ГАЛЯ, У МЕНЯ ИПОТЕКА!', 'Я САМ ИХ СОБИРАЛ!', 'Я ЖЕ ТЕБЕ МОРКОВКУ ПРИНЁС!', 'НЕЕЕЕТ ГААААЛЯЯЯЯ!', 'МЫ МОГЛИ ДРУЖИТЬ!']
+  ['Я ЖЕ ТЕБЕ ЦВЕТЫ ПРИНЁС!', 'Я ЗАКРЫЛ ТВОЮ ИПОТЕКУ, А СВОЮ НЕТ!', 'Я САМ ИХ СОБИРАЛ!', 'Я ЖЕ ТЕБЕ МОРКОВКУ ПРИНЁС!', 'НЕЕЕЕТ ГААААЛЯЯЯЯ!', 'МЫ МОГЛИ ДРУЖИТЬ!']
 ];
 const BEG = ['пожалуйста, не надо…', 'я хороший, честно', 'давай просто поговорим?', 'я никому не скажу', 'хочешь, я уйду?', 'у меня есть печенье…'];
 const OFFER = ['ЭТО ТЕБЕ…', 'РОМАШКИ. ТВОИ ЛЮБИМЫЕ?', 'Я УЕДУ. ВОТ ЧЕМОДАН.', 'Я НАПИСАЛ ТЕБЕ ОТКРЫТКУ', 'МЫ ЕЩЁ МОЖЕМ ДРУЖИТЬ'];
@@ -368,7 +368,7 @@ function updateBossDeath(dt) {
       gore(b.x, b.y - 62, dir, 1, true); wallSplat(b.x, b.y - 90, true); lensSplat(16, true); shake = 22; flash = 1; sfx.boom(); sfx.splat();
       for (let i = 0; i < 26; i++) gibs.push({ k: 'm', x: b.x, y: b.y - 60, vx: rnd(-300, 300), vy: -rnd(200, 600), rot: 0, vr: rnd(-9, 9), sc: 1.1, c: pick(['#fff', '#ffe36b', '#ff9ec4']), rest: false, life: 30, tr: 9 });
       for (const r of L.rabbits) say(r, pick(['ПУШИСТИК!!!', 'нет…', '…']), 2.5);
-      memorial.push(['Пушистик', 'просто хотел дружить']); stats.kills++;
+      memorial.push(['Пушистик', 'топ-донатер. просто хотел дружить']); donate('xX_Пушистик_Xx', 'всё, что было', 'прощальный донат. люблю тебя, Галя'); stats.kills++;
     }
   } else if (b.hatY === null) { if (modeT > 5) { b.hatY = -70; b.hatV = 0; } }
   else if (!b.won) {
@@ -431,11 +431,11 @@ try { unlocked = Math.max(1, +localStorage.getItem('galyamen_unlocked') || 1); }
 function unlockNext() { unlocked = Math.max(unlocked, curLevel + 2); try { localStorage.setItem('galyamen_unlocked', String(unlocked)); } catch (e) { } }
 function newGame() {
   nameI = 0; NAMES.sort(() => Math.random() - .5);
-  stats = { hats: 0, kills: 0, cases: 0, casesTotal: 0, carrots: 0, best: 0, hits: 0, deaths: 0, time: 0, l1left: 0 };
+  stats = { dons: 0, hats: 0, kills: 0, cases: 0, casesTotal: 0, carrots: 0, best: 0, hits: 0, deaths: 0, time: 0, l1left: 0 };
   memorial = []; parts = []; gibs = []; stains = []; splats = []; lens = []; floats = []; pickups = []; fxs = []; tears = []; puddles = [];
   chain = 0; chainT = 0; pendingCele = false; ice = null; iceSeen = false; boss = null; banner = null; letterT = 0; walker = null; walkerT = 10; fallCase = false;
   hitstop = 0; shake = 0; slow = 1; paused = false;
-  L = LEVELS[curLevel].build(); stats.casesTotal = L.casesTotal || 0; souls = []; tk = null; pools = [];
+  L = LEVELS[curLevel].build(); stats.casesTotal = L.casesTotal || 0; souls = []; tk = null; pools = []; toast = null; toastQ = [];
   if (L.pot) pickups.push({ k: 'pot', x: L.pot.x, y: L.pot.y, vx: 0, vy: 0, t: 1, rest: true });
   Object.assign(P, { x: 90, y: FY, vx: 0, vy: 0, face: 1, hp: 5, inv: 0, hurtT: 0, atk: 0, onGround: true, ground: null, idleT: 0, bub: null, masked: 0, crouch: false, h: 76, idleAnim: '', safeX: 90, safeY: FY, emoteT: 0 });
   cam = 0; look = 0; mode = 'play'; modeT = 0;
@@ -451,7 +451,7 @@ function updatePlay(dt) {
   if (hitstop > 0) { hitstop -= dt; return; }
   stats.time += dt; modeT += dt;
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
-  updateFx(dt);
+  updateFx(dt); updateToasts(dt);
   switch (mode) {
     case 'play':
       updateWorld(dt); if (mode !== 'play') break;
@@ -486,7 +486,8 @@ function drawHud() {
   for (let i = 0; i < P.maxhp; i++) spr('heart_s', 20 + i * 20, 28, false, { a: i < P.hp ? 1 : .22 });
   spr('hat_s', 138, 29, false); T('×' + stats.hats, 153, 20, { size: 10, align: 'left', stroke: '#16161d' });
   if (!L.boss) { drawCase({ x: 222, y: 30, ci: 0, scale: .55, open: false, bump: 0 }); T(stats.cases + '/' + stats.casesTotal, 236, 20, { size: 10, align: 'left', stroke: '#16161d' }); }
-  if (chain >= 2 && chainT > 0 && mode === 'play') { T('КОМБО x' + chain, W - 14, 20, { size: 11, align: 'right', color: '#ffe36b', stroke: '#16161d' }); OV.push(c => { c.fillStyle = '#16161d'; c.fillRect(W - 116, 30, 102, 6); c.fillStyle = '#ffe36b'; c.fillRect(W - 115, 31, 100 * clamp(chainT / 3.6, 0, 1), 4); }); }
+  drawStream();
+  if (chain >= 2 && chainT > 0 && mode === 'play') { T('КОМБО x' + chain, W - 14, 40, { size: 11, align: 'right', color: '#ffe36b', stroke: '#16161d' }); OV.push(c => { c.fillStyle = '#16161d'; c.fillRect(W - 116, 49, 102, 6); c.fillStyle = '#ffe36b'; c.fillRect(W - 115, 50, 100 * clamp(chainT / 3.6, 0, 1), 4); }); }
   drawBossHud();
   if (banner) { const a = Math.min(1, banner.t * 2); T(banner.s, W / 2, 120, { size: 18, color: '#fff', stroke: '#1b2a6b', sw: 6, a }); if (banner.sub && (banner.t * 5 | 0) % 2) T(banner.sub, W / 2, 152, { size: 12, color: '#ffe36b', stroke: '#16161d', a }); }
   if (letterT > 0) OV.push(c => { const a = Math.min(1, letterT * 2); c.globalAlpha = a; c.fillStyle = '#16161d'; c.fillRect(W / 2 - 172, 78, 344, 104); c.fillStyle = '#fff6e0'; c.fillRect(W / 2 - 168, 82, 336, 96); c.font = '9px PS2P,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#5a4a3a'; c.fillText('ПИСЬМО ИЗ ЧЕМОДАНА:', W / 2, 100); c.fillStyle = '#16161d'; c.font = '11px PS2P,monospace'; c.fillText('«ГАЛЯ, ОСТАНОВИСЬ.', W / 2, 126); c.fillText('ПОЖАЛУЙСТА.»', W / 2, 144); c.font = '8px PS2P,monospace'; c.fillStyle = '#5a4a3a'; c.fillText('— кролики', W / 2 + 90, 164); c.globalAlpha = 1; });
@@ -550,8 +551,8 @@ function drawTitle() {
   T('ГАЛЯ МЕН', W / 2 + 5, y + 6, { size: 64, color: '#0a1a4a' });
   T('ГАЛЯ МЕН', W / 2, y, { size: 64, color: '#ffe36b', stroke: '#16161d', sw: 12 });
   T('ГАЛЯ МЕН', W / 2, y - 3, { size: 64, color: '#fff7c2', a: .55 });
-  T('СЕЗОН ШАПОК', W / 2, 168, { size: 16, color: '#ff6b7a', stroke: '#16161d', sw: 5 });
-  T('Кролики никому не мешали. Но Галя узнала, где они живут.', W / 2, 198, { size: 8, color: '#bff7ee', stroke: '#16161d' });
+  T('СТРИМ НАЧАЛСЯ', W / 2, 168, { size: 16, color: '#ff6b7a', stroke: '#16161d', sw: 5 });
+  T('Галя вышла в эфир. Симпы донатят. Кролики ещё не знают.', W / 2, 198, { size: 8, color: '#bff7ee', stroke: '#16161d' });
   if ((t * 2 | 0) % 2) T(TOUCH ? 'ТАПНИ, ЧТОБЫ НАЧАТЬ' : 'НАЖМИ ENTER ИЛИ ПРОБЕЛ', W / 2, 238, { size: 12, color: '#fff', stroke: '#16161d', sw: 4 });
   T(TOUCH ? '' : 'M — звук   P — пауза', W - 10, H - 10, { size: 7, color: '#8f9ad0', align: 'right' });
 }
@@ -596,7 +597,7 @@ function drawEnding() {
     if (t > .6) T('ГАЛЯ ПОБЕДИЛА.', W / 2, 70, { size: 26, color: '#fff' });
     if (t > 2.6) T('Довольна?', W / 2, 108, { size: 14, color: '#ff8a94' });
     const mm = (stats.time / 60 | 0) + ':' + String(stats.time % 60 | 0).padStart(2, '0');
-    const rows = [['ШАПОК', stats.hats], ['ЧЕМОДАНОВ', stats.cases + '/' + stats.casesTotal], ['МОРКОВОК ОТОБРАНО', stats.carrots], ['ЛУЧШЕЕ КОМБО', 'x' + stats.best], ['КРОЛИКОВ ВЫЖИЛО', stats.l1left ? stats.l1left + ' (ОНИ ВСЁ ВИДЕЛИ)' : 'НИ ОДНОГО'], ['ВРЕМЯ', mm]];
+    const rows = [['ШАПОК', stats.hats], ['ДОНАТОВ ОТ СИМПОВ', stats.dons + (stats.dons ? ' (ИПОТЕКА ЗАКРЫТА)' : '')], ['ЧЕМОДАНОВ', stats.cases + '/' + stats.casesTotal], ['МОРКОВОК ОТОБРАНО', stats.carrots], ['ЛУЧШЕЕ КОМБО', 'x' + stats.best], ['КРОЛИКОВ ВЫЖИЛО', stats.l1left ? stats.l1left + ' (ОНИ ВСЁ ВИДЕЛИ)' : 'НИ ОДНОГО'], ['ВРЕМЯ', mm]];
     rows.forEach((r, i) => { if (t > 4.4 + i * .5) { T(r[0], W / 2 - 14, 152 + i * 24, { size: 10, color: '#8f9ad0', align: 'right' }); T(String(r[1]), W / 2 + 14, 152 + i * 24, { size: 10, color: '#ffe36b', align: 'left' }); } });
     if (t > 8) T('РАНГ: ' + rankOf(), W / 2, 316, { size: 14, color: '#3ddc6a', stroke: '#16161d', sw: 5 });
     if (P.masked) spr('g_mask' + ((t / .35 | 0) % 3), 90, 430 - Math.abs(Math.sin(t * 6)) * 4, false, { img: galB[3] });
@@ -615,7 +616,7 @@ function makeCredits() {
   add('ПОМНИМ. СКОРБИМ.', null, { size: 16, gap: 40 });
   memorial.forEach(m => add(m[0].toUpperCase(), m[1]));
   y += 30; add('В РОЛЯХ', null, { size: 14, gap: 34 });
-  add('ГАЛЯ', 'Галя'); add('КРОЛИКИ', 'кролики'); add('МОРОЖЕНЩИК', 'никто не знает, кто это'); add('ЧЕМОДАНЫ', 'чемоданы'); add('СКОВОРОДКА', 'чугун, 3 кг');
+  add('ГАЛЯ', 'Галя, стримерша'); add('СИМПЫ', 'оплатили всё это'); add('КРОЛИКИ', 'кролики'); add('МОРОЖЕНЩИК', 'никто не знает, кто это'); add('ЧЕМОДАНЫ', 'чемоданы'); add('СКОВОРОДКА', 'чугун, 3 кг');
   y += 30; add('ПРИ СОЗДАНИИ ИГРЫ', null, { size: 9, color: '#bff7ee', gap: 18 }); add('НИ ОДИН КРОЛИК НЕ ПОСТРАДАЛ', null, { size: 9, color: '#bff7ee', gap: 26 }); add('(пострадали все)', null, { size: 8, color: '#ff8a94', gap: 60 });
   add('ДЛЯ ГАЛИ, С ЛЮБОВЬЮ', null, { size: 10, color: '#ffd0e8', gap: 40 });
   return { rows, h: y, t0: sceneT, done: false };
