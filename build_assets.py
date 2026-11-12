@@ -21,6 +21,30 @@ g2 = [im for im, _ in cut.cut('20', 4, 0.2)]
 for name, im, ax in zip(['g_laugh1', 'g_laugh2', 'g_dance1', 'g_dance2'], g2, [36, 19, 38, 23]):
     add(name, im, ax)
 
+# --- extra Galya animations (sheets with real alpha) -------------------
+def jacket_cx(im):
+    a = np.array(im).astype(int)
+    m = (a[..., 3] > 0) & (a[..., 0] > 90) & (a[..., 1] < 75) & (a[..., 2] < 80) & (a[..., 0] - a[..., 1] > 50)
+    xs = np.where(m)[1]
+    return xs.mean() if len(xs) else im.width / 2
+
+
+def add_auto(names, lst):
+    for name, (im, _) in zip(names, lst):
+        add(name, im, jacket_cx(im))
+
+
+add_auto(['g_wolf0', 'g_crouch', 'g_crouch2', 'g_howl1', 'g_howl2'], cut.cut(None, 5, 0.2, path='art/galya_wolf.png', alpha=True))
+add_auto(['g_vod%d' % i for i in range(8)], cut.cut(None, 8, 0.2, path='art/galya_vodka.png', alpha=True))
+add_auto(['g_mask0', 'g_mask1', 'g_mask2'], cut.cut(None, 3, 0.2, path='art/galya_mask.png', alpha=True))
+add_auto(['g_shake1', 'g_shake2'], cut.cut(None, 2, 0.2, path='art/galya_shake.png'))
+for name, (im, _) in zip(['t_stand', 't_mount', 't_sit', 't_ride', 't_cry1', 't_cry2'], cut.cut(None, 6, 0.3, path='art/tikhon.png', alpha=True)):
+    add(name, im, im.width / 2)
+mm = cut.cut(None, 2, 0.12, path='art/mask_money.png')
+add('mask', mm[0][0], mm[0][0].width / 2)
+mm = cut.cut(None, 2, 0.07, path='art/mask_money.png')
+add('money', mm[1][0], mm[1][0].width / 2)
+
 # --- rabbits ---------------------------------------------------------
 r = [im for im, _ in cut.cut('14', 5, 0.15)]
 for name, im, ax, ay in zip(['r_sit', 'r_tremble', 'r_give', 'r_run', 'r_ko'], r, [18, 25, 17, 31, 24], [49, 36, 48, 44, 54]):

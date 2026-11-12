@@ -24,7 +24,8 @@ function updatePlayer(dt, ctrl) {
   if (P.bub) { P.bub.t -= dt; if (P.bub.t <= 0) P.bub = null; }
   P.inv = Math.max(0, P.inv - dt); P.emoteT = Math.max(0, P.emoteT - dt);
   if (P.hurtT > 0) { P.hurtT -= dt; ctrl = false; }
-  let ax = 0; if (ctrl) { if (down('L')) ax -= 1; if (down('R')) ax += 1; }
+  P.crouch = ctrl && down('D') && P.onGround && P.atk <= 0; P.h = P.crouch ? 48 : 76;
+  let ax = 0; if (ctrl && !P.crouch) { if (down('L')) ax -= 1; if (down('R')) ax += 1; }
   const acc = P.onGround ? (P.slip ? 380 : 1900) : 1300;
   if (ax) { P.vx = clamp(P.vx + ax * acc * dt, -190, 190); if (P.atk <= 0) P.face = ax; }
   else { const fr = (P.onGround ? (P.slip ? 200 : 2300) : 420) * dt; if (Math.abs(P.vx) <= fr) P.vx = 0; else P.vx -= sign(P.vx) * fr; }
@@ -44,13 +45,18 @@ function updatePlayer(dt, ctrl) {
   collide(P, dt);
   if (!wasG && P.onGround) burst(P.x, P.y, 4, ['#cfd8e6', '#8fa3c7'], 60, .25);
   // idle antics
-  if (P.onGround && Math.abs(P.vx) < 6 && P.atk <= 0 && !ax && ctrl) {
+  if (P.onGround && Math.abs(P.vx) < 6 && P.atk <= 0 && !ax && ctrl && !P.crouch) {
     P.idleT += dt;
     if (P.idleT > 3.5) {
-      P.wigT -= dt;
+      if (!P.idleAnim) { P.idleAnim = Math.random() < .5 ? 'shake' : 'vodka'; P.idleA = 0; P.idleF = ''; }
+      P.idleA += dt;
+      const fr = idleFrame(P.idleAnim, P.idleA)[0];
+      if (fr !== P.idleF) { P.idleF = fr; idleSfx(fr); }
+      if (P.idleA > (P.idleAnim === 'vodka' ? 5.85 : 4.2)) P.idleAnim = '';
+      if (P.idleAnim === 'shake') P.wigT -= dt;
       if (P.wigT <= 0) { P.wigT = rnd(2.4, 3.8); if (Math.random() < .5) doBark(); else { say(P, pick(['ХИ-ХИ', 'АХАХА', 'ЛЯ-ЛЯ-ЛЯ', 'ХЕ-ХЕ']), 1); sfx.laugh(4, rnd(560, 680), .12); } }
     }
-  } else { P.idleT = 0; P.wigT = 1.6; }
+  } else { P.idleT = 0; P.wigT = 1.6; P.idleAnim = ''; }
   if (P.onGround && Math.abs(P.vx) > 30) P.runT += dt; else P.runT = 0;
   // safe spot / pits
   const s = P.ground;
@@ -59,9 +65,8 @@ function updatePlayer(dt, ctrl) {
   P.slip = false;
   if (P.onGround) for (const pd of puddles) if (Math.abs(P.x - pd.x) < pd.w / 2) P.slip = true;
 }
-const HEADTOP = { g_idle: 86, g_run: 79, g_jump: 66, g_wind: 72, g_smash: 60, g_hit: 80, g_laugh1: 78, g_laugh2: 62, g_dance1: 76, g_dance2: 68 };
-function drawWiggle(img, x, y, flip, t) {
-  const f = F.g_idle; x = Math.round(x); y = Math.round(y);
+function drawWiggle(img, name, x, y, flip, t) {
+  const f = F[name]; x = Math.round(x); y = Math.round(y);
   for (let r = 0; r < f[3]; r++) {
     const rel = r / f[3], b = Math.exp(-Math.pow((rel - .62) / .15, 2));
     const dx = Math.round(Math.sin(t * 17) * 6 * b);
@@ -69,27 +74,43 @@ function drawWiggle(img, x, y, flip, t) {
     else g.drawImage(img, f[0], f[1] + r, f[2], 1, x - f[4] + dx, y - f[5] + r, f[2], 1);
   }
 }
+// анимации простоя: 'shake' (танец) и 'vodka' (водка и сигарета). Возвращает [кадр, трясти ли бёдрами]
+const VOD_T = [.7, .35, .5, .9, .7, .6, .8, 1.3];
+function idleFrame(kind, t) {
+  if (kind === 'vodka') { let a = t % 5.85; for (let i = 0; i < 8; i++) { if (a < VOD_T[i]) return ['g_vod' + i, false]; a -= VOD_T[i]; } return ['g_vod7', false]; }
+  const a = t % 4.2; return (a < .5 || a > 3.8) ? ['g_shake1', false] : ['g_shake2', true];
+}
+function idleSfx(fr) {
+  if (fr === 'g_vod2') sfx.gulp(); else if (fr === 'g_vod3') sfx.gulp();
+  else if (fr === 'g_vod4') { sfx.aah(); say(P, pick(['ААХ…', 'ХОРОШО ПОШЛА', 'ЗА КРОЛИКОВ']), 1.1); }
+  else if (fr === 'g_vod5') sfx.lighter();
+  else if (fr === 'g_shake2') say(P, pick(['ЛЯ-ЛЯ-ЛЯ', 'ОП-ОП', 'ЭХ!']), 1);
+}
+function drawNotes(x, y, face) { for (let i = 0; i < 2; i++) { const ph = (gameT * .9 + i * .5) % 1, nx = x - face * (22 + i * 10) + Math.sin(ph * 9) * 4, ny = y - 50 - ph * 34; R(nx, ny, 2, 7, '#ffe36b'); R(nx - 3, ny + 5, 4, 3, '#ffe36b'); R(nx, ny, 5, 2, '#ffe36b'); } }
 function drawPlayer() {
   let name = 'g_idle', oy = 0, flip = P.face < 0, wig = false;
-  if (mode === 'celebrate') {
-    const t = cele.t;
-    if (t < 1.3) { name = (t / .13 | 0) % 2 ? 'g_laugh2' : 'g_laugh1'; oy = (t / .065 | 0) % 2 ? -2 : 0; }
-    else { const k = ((t - 1.3) / .19 | 0); name = k % 2 ? 'g_dance2' : 'g_dance1'; if ((k / 2 | 0) % 2) flip = !flip; oy = -Math.abs(Math.sin((t - 1.3) * 16.5)) * 6; }
+  const laughFr = t => (t / .13 | 0) % 2 ? 'g_laugh2' : 'g_laugh1';
+  if (P.masked) { name = 'g_mask' + ((gameT / .35 | 0) % 3); if (mode === 'celebrate') oy = -Math.abs(Math.sin(gameT * 9)) * 5; }
+  else if (mode === 'celebrate') {
+    const t = cele.t, k = cele.kind;
+    if (k === 'howl') { if (t < .45) name = 'g_crouch'; else if (t < .9) name = 'g_crouch2'; else { name = (t / .32 | 0) % 2 ? 'g_howl2' : 'g_howl1'; oy = (t / .06 | 0) % 2 ? -1 : 0; } }
+    else if (k === 'laugh') { name = laughFr(t); oy = (t / .065 | 0) % 2 ? -2 : 0; }
+    else if (t < .5) name = laughFr(t);
+    else { const q = ((t - .5) / .19 | 0); name = q % 2 ? 'g_dance2' : 'g_dance1'; if ((q / 2 | 0) % 2) flip = !flip; oy = -Math.abs(Math.sin((t - .5) * 16.5)) * 6; }
   }
+  else if (mode === 'tikhon' && tk && tk.ph === 3) { name = laughFr(tk.t); oy = (tk.t / .065 | 0) % 2 ? -2 : 0; }
   else if (mode === 'dead' || P.hurtT > 0) name = 'g_hit';
   else if (P.atk > 0) name = (ATK_T - P.atk) < .06 ? 'g_wind' : 'g_smash';
   else if (!P.onGround) name = 'g_jump';
+  else if (P.crouch) name = 'g_crouch';
   else if (Math.abs(P.vx) > 30) { if ((P.runT * 9 | 0) % 2) { name = 'g_jump'; oy = -8; } else name = 'g_run'; }
   else if (P.emoteT > 0 && P.emote === 'laugh') name = (P.emoteT / .1 | 0) % 2 ? 'g_laugh2' : 'g_laugh1';
   else if (P.emoteT > 0 && P.emote === 'bark') { name = 'g_idle'; oy = -3; }
-  else if (P.idleT > 3.5 && mode === 'play') wig = true;
+  else if (P.idleAnim && mode === 'play') { const fr = idleFrame(P.idleAnim, P.idleA); name = fr[0]; wig = fr[1]; }
   if (P.inv > 0 && P.hurtT <= 0 && mode === 'play' && (P.inv * 18 | 0) % 2) return;
   const lv = stats.kills >= 18 ? 3 : stats.kills >= 9 ? 2 : stats.kills >= 3 ? 1 : 0, img = galB[lv];
-  if (P.bigHat) spr('hat', P.x + (flip ? -4 : 4), P.y + oy - HEADTOP[name] + 24, flip, { sx: 1.7 });
-  if (wig) {
-    drawWiggle(img, P.x, P.y, flip, gameT);
-    for (let i = 0; i < 2; i++) { const ph = (gameT * .9 + i * .5) % 1, nx = P.x - P.face * (22 + i * 10) + Math.sin(ph * 9) * 4, ny = P.y - 50 - ph * 34; R(nx, ny, 2, 7, '#ffe36b'); R(nx - 3, ny + 5, 4, 3, '#ffe36b'); R(nx, ny, 5, 2, '#ffe36b'); }
-  } else spr(name, P.x, P.y + oy, flip, { img });
+  if (wig) { drawWiggle(img, name, P.x, P.y, flip, gameT); drawNotes(P.x, P.y, P.face); }
+  else spr(name, P.x, P.y + oy, flip, { img });
 }
 
 // ---------- hazards, cases, triggers ----------
@@ -118,8 +139,8 @@ function updateWorld(dt) {
       if (on && Math.abs(P.x - z.x) < 15 && P.y > z.y0 && P.y - P.h < z.y1) hurtPlayer(P.x < z.x ? -1 : 1);
     }
     for (const c of L.checks) if (!c.on && P.x > c.x) { c.on = true; L.lastCheck = c; sfx.ok(); floater('СОХРАНЕНО', c.x, FY - 90, { color: '#3ddc6a', size: 9, t: 1.4 }); if (P.hp < P.maxhp) P.hp++; }
-    if (!iceSeen && P.x > L.iceX && P.onGround && !pendingCele) startIce();
-    if (!fallCase && P.x > L.fallX) { fallCase = true; const c = mkCase(P.x + 170, -40, 'rabbit', 2, 1, true); c.fall = true; c.fallen = true; L.cases.push(c); }
+    if (!iceSeen && L.iceX && P.x > L.iceX && P.onGround && !pendingCele) startIce();
+    if (!fallCase && L.fallX && P.x > L.fallX) { fallCase = true; const c = mkCase(P.x + 170, -40, 'rabbit', 2, 1, true); c.fall = true; c.fallen = true; L.cases.push(c); }
     if (P.x > L.gateX - 50 && P.onGround) { mode = 'gate'; modeT = 0; sfx.gate(); P.atk = 0; }
     // чемодан на ножках
     walkerT -= dt;
@@ -169,11 +190,56 @@ function drawIce() {
   if (ice.bub) bubble(ice.bub.s, ice.x - 24 - camR, L.fy - 128, { size: 9 });
 }
 
+// ---------- Тихон на мотоцикле ----------
+function startTikhon() {
+  const dir = P.x > 280 ? 1 : -1;
+  tk = { dir, x: dir > 0 ? -90 : W + 90, stop: P.x - dir * 135, ph: 0, t: 0, bub: null, money: null, eng: 0, out: 0, sob: 0 };
+  mode = 'tikhon'; modeT = 0; P.vx = 0; P.atk = 0; P.bub = null; P.idleAnim = ''; P.crouch = false; P.h = 76; stopSong(); tears = [];
+}
+function updateTikhon(dt) {
+  const k = tk; k.t += dt; P.vx = 0; P.vy = Math.min(900, P.vy + GRAV * dt); collide(P, dt);
+  P.face = k.x < P.x ? -1 : 1; if (boss) boss.face = k.x < boss.x ? -1 : 1;
+  if (k.bub) { k.bub.t -= dt; if (k.bub.t <= 0) k.bub = null; }
+  if (k.ph === 0 || k.ph === 4) { k.eng -= dt; if (k.eng <= 0) { k.eng = .09; sfx.moto(); parts.push({ k: 'p', x: k.x - k.dir * 44, y: L.fy - 6, vx: -k.dir * rnd(20, 70), vy: -rnd(5, 40), s: 3, c: pick(['#cfd8e6', '#8f7fb0']), life: .5, g: 0 }); } }
+  switch (k.ph) {
+    case 0: k.x += k.dir * 250 * dt; if ((k.stop - k.x) * k.dir <= 0) { k.x = k.stop; k.ph = 1; k.t = 0; sfx.thud(); say(P, '?', 1); } break;
+    case 1:
+      if (k.t > .7 && !k.money) { k.money = { t: 0, x0: k.x + k.dir * 20, done: false }; sfx.swing(); say(k, 'ДЕРЖИ. НА МЕЛКИЕ РАСХОДЫ', 1.5); }
+      if (k.money && !k.money.done) { k.money.t += dt; if (k.money.t >= .6) { k.money.done = true; P.hp = Math.min(P.maxhp, P.hp + 3); sfx.heal(); floater('ДЕНЬГИ ЛЕЧАТ', P.x, P.y - 100, { color: '#7fe08a', t: 1.6 }); burst(P.x, P.y - 50, 16, ['#7fe08a', '#2f8a3a', '#f3c93a'], 170, .6); } }
+      if (k.t > 2.4) { k.ph = 2; k.t = 0; say(k, 'ГАЛЯ, ПОЛЕТИШЬ СО МНОЙ В ЯПОНИЮ?', 2.7); sfx.blip2(); }
+      break;
+    case 2: if (k.t > 3) { k.ph = 3; k.t = 0; k.bub = null; sfx.maniac(); say(P, 'АХАХАХАХАХА', 2.8); } break;
+    case 3:
+      if (k.t > 1.3 && k.t - dt <= 1.3) sfx.maniac();
+      if (k.t > 1.5 && !k.sob) { k.sob = 1; say(k, '…ПОНЯЛ', 1.3); if (boss && !boss.bub) say(boss, 'ой…', 1.5); }
+      if (k.t > 3.1) { k.ph = 4; k.t = 0; say(k, 'Я НЕ КУКОЛД!!!', 3.5); sfx.scream(.9); playSong('sad'); }
+      break;
+    case 4:
+      k.x += k.dir * (110 + k.t * 280) * dt;
+      if (k.x < -130 || k.x > W + 130) {
+        k.out += dt;
+        if (k.out > 1) { tk = null; mode = 'play'; playSong('boss'); if (boss) { boss.state = 'offer'; boss.t = 0; boss.waveT = 3.2; boss.card = 4; say(boss, '…А МЕНЯ В ЯПОНИЮ НИКТО НЕ ЗОВЁТ', 2.8); } }
+      }
+      break;
+  }
+}
+function drawTikhon() {
+  const k = tk; if (!k) return;
+  let name = 't_sit', oy = 0;
+  if (k.ph === 0) oy = (k.t * 14 | 0) % 2;
+  else if (k.ph === 1 || k.ph === 2) name = 't_stand';
+  else if (k.ph === 3) name = k.t < 1.5 ? 't_stand' : k.t < 2.4 ? 't_mount' : 't_ride';
+  else { name = k.t < .4 ? 't_ride' : (k.t / .2 | 0) % 2 ? 't_cry1' : 't_cry2'; oy = (k.t * 14 | 0) % 2; }
+  spr(name, k.x, L.fy + 2 - oy, k.dir < 0);
+  if (k.money && !k.money.done) { const q = k.money.t / .6; spr('money', k.money.x0 + (P.x - k.money.x0) * q, L.fy - 70 - Math.sin(q * Math.PI) * 60, false, { rot: q * 9 }); }
+  if (k.bub) bubble(k.bub.s, k.x - camR, L.fy - 112, { size: k.ph === 4 ? 12 : 9, max: 16, shake: k.ph === 4 ? 2 : 0 });
+}
+
 // ---------- босс: Пушистик ----------
 const GREET = ['ОЙ! ПРИВЕТ! Я ПУШИСТИК!', 'ТЫ ПРИШЛА ПОИГРАТЬ?', 'ДАВАЙ ДРУЖИТЬ!', 'У ТЕБЯ КРАСИВАЯ СКОВОРОДКА!', 'А Я ТЕБЕ МЕСТО ЗАНЯЛ!', 'ХОЧЕШЬ МОРКОВКУ?'];
 const SCREAMS = [
   ['АЙ! ЗА ЧТО?!', 'НЕ НАДО!', 'МНЕ ЖЕ БОЛЬНО!', 'ГАЛЯ, ТЫ ЧЕГО?!', 'Я ЖЕ ПОЗДОРОВАЛСЯ!', 'МЫ ЖЕ ДРУЗЬЯ?', 'ОЙ-ОЙ-ОЙ!'],
-  ['НЕЕЕТ ГАААЛЯЯЯ!', 'НЕ НАДООО!', 'ЗА ЧТООО?!', 'ПОЖАЛУЙСТААА!', 'Я БОЛЬШЕ НЕ БУДУ! (ЧТО?)', 'МАМАААА!', 'ХВАТИИИТ!'],
+  ['НЕЕЕТ ГАААЛЯЯЯ!', 'НЕ НАДООО!', 'ЗА ЧТООО?!', 'ПОЖАЛУЙСТААА!', 'Я ТЕБЕ НЕ СТЕПАШКА! …ХОТЯ ДА', 'МАМАААА!', 'ХВАТИИИТ!'],
   ['Я ЖЕ ТЕБЕ ЦВЕТЫ ПРИНЁС!', 'ГАЛЯ, У МЕНЯ ИПОТЕКА!', 'Я САМ ИХ СОБИРАЛ!', 'Я ЖЕ ТЕБЕ МОРКОВКУ ПРИНЁС!', 'НЕЕЕЕТ ГААААЛЯЯЯЯ!', 'МЫ МОГЛИ ДРУЖИТЬ!']
 ];
 const BEG = ['пожалуйста, не надо…', 'я хороший, честно', 'давай просто поговорим?', 'я никому не скажу', 'хочешь, я уйду?', 'у меня есть печенье…'];
@@ -182,7 +248,7 @@ const MERCY = ['ГАЛЯ НЕ ЗНАЕТ ЭТОГО СЛОВА', 'КНОПКА �
 function startBoss() {
   L = buildBossLevel(); cam = 0; look = 0;
   parts = []; gibs = []; stains = []; splats = []; pickups = []; tears = []; puddles = []; floats = []; fxs = [];
-  Object.assign(P, { x: 70, y: FYB, vx: 0, vy: 0, hp: P.maxhp, face: 1, inv: 0, hurtT: 0, atk: 0, onGround: true, idleT: 0, bub: null, bigHat: 0, safeX: 70, safeY: FYB });
+  Object.assign(P, { x: 70, y: FYB, vx: 0, vy: 0, hp: P.maxhp, face: 1, inv: 0, hurtT: 0, atk: 0, onGround: true, idleT: 0, bub: null, masked: 0, crouch: false, h: 76, idleAnim: '', safeX: 70, safeY: FYB });
   boss = { x: 610, y: FYB, hp: 20, max: 20, state: 'greet', t: 0, phase: 1, face: -1, inv: 0, fl: 0, bub: null, line: 0, sline: 0, hopFrom: 0, hopTo: 0, hopT: 0, hops: 0, dead: false, rainT: 0, grief: 0, started: false, mercy: 0, mercyGone: 0, waveT: 0, card: 0, scale: 1 };
   mode = 'play'; modeT = 0; scene = 'play'; chain = 0; pendingCele = false; ice = null; iceSeen = true; stopSong();
   banner = { s: 'ЛОГОВО ПУШИСТИКА', sub: 'он тебя ждал', t: 2.4 };
@@ -213,7 +279,7 @@ function hitBoss() {
   const np = b.hp <= 6 ? 3 : b.hp <= 13 ? 2 : 1;
   if (np !== b.phase) {
     b.phase = np; b.sline = 0;
-    if (np === 3) { b.state = 'p3'; b.t = 0; tears = []; say(b, 'ПОДОЖДИ… ТЫ СЛЫШИШЬ?', 1.7); stopSong(); for (const r of L.rabbits) r.vx = 0; return true; }
+    if (np === 3) { b.state = 'p3'; b.t = 0; tears = []; say(b, 'ПОДОЖДИ… ЭТО МОТОЦИКЛ?', 1.7); stopSong(); for (const r of L.rabbits) r.vx = 0; return true; }
   }
   b.state = 'hurt'; b.t = 0; b.hops = 0;
   const arr = SCREAMS[b.phase - 1]; say(b, arr[b.sline++ % arr.length], 1.5); sfx.scream(.45 + b.phase * .22);
@@ -251,7 +317,7 @@ function updateBoss(dt) {
       break;
     }
     case 'beg': if (b.t > (ph === 1 ? 3.3 : 2.3)) { b.state = 'cry'; b.t = 0; b.rainT = 0; say(b, pick(['У-А-А-А-А!', 'ХНЫЫЫК!', 'ЗА ЧТОООО!']), 1.2); sfx.scream(.7); } break;
-    case 'p3': if (b.t > 1.9 && P.onGround && mode === 'play') startIce(); break;
+    case 'p3': if (b.t > 1.9 && P.onGround && mode === 'play') startTikhon(); break;
     case 'offer': {
       b.waveT -= dt;
       if (b.waveT <= 0) { b.waveT = 3.3; const gx = rnd(90, W - 90); for (let x = 24; x < W - 20; x += 36) if (Math.abs(x - gx) > 66 && Math.abs(x - b.x) > 50) spawnTear(x + rnd(-5, 5), { y: -20 - rnd(50), vy: 215 }); sfx.scream(.4); }
@@ -263,7 +329,7 @@ function updateBoss(dt) {
   // слёзы
   for (let i = tears.length - 1; i >= 0; i--) {
     const t = tears[i]; t.vy += t.g * dt; t.x += t.vx * dt; t.y += t.vy * dt;
-    if (Math.abs(t.x - P.x) < 17 && t.y > P.y - 78 && t.y < P.y + 4) { hurtPlayer(sign(P.x - t.x || 1)); t.y = 9999; }
+    if (Math.abs(t.x - P.x) < 17 && t.y > P.y - P.h - 2 && t.y < P.y + 4) { hurtPlayer(sign(P.x - t.x || 1)); t.y = 9999; }
     if (t.y >= FYB - 3) {
       if (t.y < 9000) { burst(t.x, FYB - 2, 7, ['#8fdcff', '#c8f0ff', '#4ab0e8'], 130, .4); if (Math.random() < .5) sfx.splash(); if (ph >= 2 && puddles.length < 9 && t.x > 20 && t.x < W - 20) puddles.push({ x: t.x, w: 56, t: 5.5 }); }
       tears.splice(i, 1);
@@ -273,7 +339,7 @@ function updateBoss(dt) {
   // кнопка «пощадить»
   if (b.started && !b.mercyGone && mode === 'play') {
     const tap = hit('T') && Math.abs(tapX - W / 2) < 90 && tapY > H - 40;
-    if (hit('D') || tap) { sfx.buzz(); shake = Math.max(shake, 5); floater(MERCY[Math.min(b.mercy, MERCY.length - 1)], W / 2, H - 62, { scr: true, color: '#ff6b6b', size: 10, t: 1.6, vy: -14 }); b.mercy++; if (b.mercy >= MERCY.length) { b.mercyGone = .01; sfx.thud(); } }
+    if (hit('S') || tap) { sfx.buzz(); shake = Math.max(shake, 5); floater(MERCY[Math.min(b.mercy, MERCY.length - 1)], W / 2, H - 62, { scr: true, color: '#ff6b6b', size: 10, t: 1.6, vy: -14 }); b.mercy++; if (b.mercy >= MERCY.length) { b.mercyGone = .01; sfx.thud(); } }
   }
   if (b.mercyGone) b.mercyGone += dt;
 }
@@ -297,7 +363,7 @@ function updateBossDeath(dt) {
   } else if (b.hatY === null) { if (modeT > 5) { b.hatY = -70; b.hatV = 0; } }
   else if (!b.won) {
     b.hatV += 900 * dt; b.hatY += b.hatV * dt;
-    if (b.hatY >= P.y - 74) { b.won = .001; P.bigHat = 1; stats.hats += 10; sfx.thud(); shake = 8; playSong('win'); burst(P.x, P.y - 80, 20, ['#fff', '#ffe36b'], 200, .7); }
+    if (b.hatY >= P.y - 60) { b.won = .001; P.masked = 1; sfx.thud(); shake = 8; playSong('win'); burst(P.x, P.y - 80, 20, ['#fff', '#ffe36b'], 200, .7); }
   } else {
     b.won += dt;
     if (b.won > 3.4 && mode === 'bossdeath') { cele.n = 99; startCelebrate(); cele.title = 'ГАЛЯ МЕН'; L.after = true; }
@@ -327,7 +393,7 @@ function drawBoss() {
     if (b.card > 0) { const cx = b.x + b.face * 84, cy = b.y - 120 + Math.sin(gameT * 3) * 3; R(cx - 44, cy - 22, 88, 44, '#16161d'); R(cx - 42, cy - 20, 84, 40, '#fff6e0'); spr('heart_s', cx, cy - 2, false); T('ГАЛЕ ОТ', cx, cy + 5, { size: 7, color: '#a3111f' }); T('ПУШИСТИКА', cx, cy + 14, { size: 7, color: '#a3111f' }); }
   }
   for (const t of tears) { const x = Math.round(t.x), y = Math.round(t.y); g.fillStyle = '#16161d'; g.beginPath(); g.moveTo(x, y - 13); g.lineTo(x + 7, y - 2); g.arc(x, y - 2, 7, 0, Math.PI); g.lineTo(x, y - 13); g.fill(); g.fillStyle = '#6fc8ff'; g.beginPath(); g.moveTo(x, y - 10); g.lineTo(x + 5, y - 2); g.arc(x, y - 2, 5, 0, Math.PI); g.lineTo(x, y - 10); g.fill(); R(x - 2, y - 4, 2, 3, '#e6f8ff'); }
-  if (b.hatY !== null && b.hatY !== undefined && !b.won) spr('hat', P.x, b.hatY, false, { sx: 1.9 });
+  if (b.hatY !== null && b.hatY !== undefined && !b.won) spr('mask', P.x, b.hatY, false, { rot: Math.sin(gameT * 5) * .25 });
   if (b.state === 'dying' && !b.dead) {
     const s = 'НЕЕЕЕЕЕЕТ ГААААЛЯЯЯЯЯ', n = Math.min(s.length, (modeT * 11 | 0));
     T(s.slice(0, n), W / 2 + rnd(-3, 3), 120 + rnd(-3, 3), { size: 22 + modeT * 5, color: '#fff', stroke: '#a3111f', sw: 6 });
@@ -340,25 +406,29 @@ function drawBossHud() {
     OV.push(c => { c.fillStyle = '#16161d'; c.fillRect(W / 2 - 152, 26, 304, 12); for (let i = 0; i < b.max; i++) { c.fillStyle = i < b.hp ? (b.phase === 3 ? '#ff5b6b' : b.phase === 2 ? '#ffb35b' : '#ff9ec4') : '#3a2a44'; c.fillRect(W / 2 - 150 + i * 15, 28, 13, 8); } });
     if (!b.mercyGone || b.mercyGone < 1.2) {
       const dy = b.mercyGone ? b.mercyGone * b.mercyGone * 400 : 0, rot = b.mercyGone ? b.mercyGone * 1.4 : 0, cr = b.mercy;
-      OV.push(c => { c.save(); c.translate(W / 2, H - 22 + dy); c.rotate(rot); c.fillStyle = '#16161d'; c.fillRect(-84, -13, 168, 26); c.fillStyle = '#2d6a3a'; c.fillRect(-82, -11, 164, 22); c.fillStyle = '#3ddc6a'; c.fillRect(-82, -11, 164, 2); c.font = '9px PS2P,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#eaffef'; c.fillText((TOUCH ? '' : '↓ ') + 'ПОЩАДИТЬ', 0, 1); c.strokeStyle = '#16161d'; c.lineWidth = 1.5; for (let i = 0; i < cr; i++) { c.beginPath(); c.moveTo(-70 + i * 34, -11); c.lineTo(-62 + i * 34, -2); c.lineTo(-68 + i * 34, 4); c.lineTo(-58 + i * 34, 11); c.stroke(); } c.restore(); });
+      OV.push(c => { c.save(); c.translate(W / 2, H - 22 + dy); c.rotate(rot); c.fillStyle = '#16161d'; c.fillRect(-84, -13, 168, 26); c.fillStyle = '#2d6a3a'; c.fillRect(-82, -11, 164, 22); c.fillStyle = '#3ddc6a'; c.fillRect(-82, -11, 164, 2); c.font = '9px PS2P,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#eaffef'; c.fillText((TOUCH ? '' : 'ENTER: ') + 'ПОЩАДИТЬ', 0, 1); c.strokeStyle = '#16161d'; c.lineWidth = 1.5; for (let i = 0; i < cr; i++) { c.beginPath(); c.moveTo(-70 + i * 34, -11); c.lineTo(-62 + i * 34, -2); c.lineTo(-68 + i * 34, 4); c.lineTo(-58 + i * 34, 11); c.stroke(); } c.restore(); });
     }
   }
 }
 
 // ---------- scene flow ----------
 function fadeTo(cb) { if (fadeDir === 1) return; fadeDir = 1; fadeCb = cb; }
+// какие уровни открыты, запоминается в браузере
+let unlocked = 1, curLevel = 0;
+try { unlocked = Math.max(1, +localStorage.getItem('galyamen_unlocked') || 1); } catch (e) { }
+function unlockNext() { unlocked = Math.max(unlocked, curLevel + 2); try { localStorage.setItem('galyamen_unlocked', String(unlocked)); } catch (e) { } }
 function newGame() {
   nameI = 0; NAMES.sort(() => Math.random() - .5);
   stats = { hats: 0, kills: 0, cases: 0, casesTotal: 0, carrots: 0, best: 0, hits: 0, deaths: 0, time: 0, l1left: 0 };
   memorial = []; parts = []; gibs = []; stains = []; splats = []; lens = []; floats = []; pickups = []; fxs = []; tears = []; puddles = [];
   chain = 0; chainT = 0; pendingCele = false; ice = null; iceSeen = false; boss = null; banner = null; letterT = 0; walker = null; walkerT = 10; fallCase = false;
   hitstop = 0; shake = 0; slow = 1; paused = false;
-  L = buildLevel1(); stats.casesTotal = L.casesTotal;
-  pickups.push({ k: 'pot', x: L.pot.x, y: L.pot.y, vx: 0, vy: 0, t: 1, rest: true });
-  Object.assign(P, { x: 90, y: FY, vx: 0, vy: 0, face: 1, hp: 5, inv: 0, hurtT: 0, atk: 0, onGround: true, ground: null, idleT: 0, bub: null, bigHat: 0, safeX: 90, safeY: FY, emoteT: 0 });
+  L = LEVELS[curLevel].build(); stats.casesTotal = L.casesTotal || 0; souls = []; tk = null;
+  if (L.pot) pickups.push({ k: 'pot', x: L.pot.x, y: L.pot.y, vx: 0, vy: 0, t: 1, rest: true });
+  Object.assign(P, { x: 90, y: FY, vx: 0, vy: 0, face: 1, hp: 5, inv: 0, hurtT: 0, atk: 0, onGround: true, ground: null, idleT: 0, bub: null, masked: 0, crouch: false, h: 76, idleAnim: '', safeX: 90, safeY: FY, emoteT: 0 });
   cam = 0; look = 0; mode = 'play'; modeT = 0;
 }
-function startLevel() { newGame(); scene = 'play'; sceneT = 0; playSong('level'); banner = { s: 'ЭТАП 1: КРЕПОСТЬ ПУШИСТЫХ', sub: 'ГАЛЯ, ФАС!', t: 2.6 }; }
+function startLevel(i) { curLevel = i || 0; newGame(); scene = 'play'; sceneT = 0; playSong('level'); banner = { s: 'ЭТАП ' + (curLevel + 1) + ': ' + LEVELS[curLevel].name, sub: 'ГАЛЯ, ФАС!', t: 2.6 }; }
 function respawn() {
   if (L.boss) { startBoss(); return; }
   const c = L.lastCheck; P.x = c ? c.x + 20 : 90; P.y = FY; P.vx = P.vy = 0; P.hp = P.maxhp; P.inv = 1.5; P.hurtT = 0; P.onGround = true;
@@ -382,9 +452,10 @@ function updatePlay(dt) {
       }
       break;
     case 'ice': tickBubbles(dt); updateIce(dt); break;
+    case 'tikhon': tickBubbles(dt); updateTikhon(dt); break;
     case 'gate':
       L.gate = Math.min(1, modeT / .9);
-      if (modeT > .7) { P.vx = 120; P.face = 1; P.runT += dt; P.vy += GRAV * dt; collide(P, dt); if (P.x > L.gateX + 30) fadeTo(startBossIntro); }
+      if (modeT > .7) { P.vx = 120; P.face = 1; P.runT += dt; P.vy += GRAV * dt; collide(P, dt); if (P.x > L.gateX + 30) fadeTo(LEVELS[curLevel].boss ? startBossIntro : () => { stats.l1left = L.rabbits.filter(r => !r.dead).length; startEnding(); }); }
       else { P.vx = 0; P.vy += GRAV * dt; collide(P, dt); }
       break;
     case 'dead':
@@ -396,7 +467,7 @@ function updatePlay(dt) {
   }
 }
 function startBossIntro() { stats.l1left = L.rabbits.filter(r => !r.dead).length; scene = 'bossintro'; sceneT = 0; stopSong(); tn('sawtooth', 82, 78, 1.4, .2); tn('sawtooth', 62, 58, 1.6, .2, .5); }
-function startEnding() { scene = 'ending'; sceneT = 0; playSong('sad'); }
+function startEnding() { scene = 'ending'; sceneT = 0; playSong('sad'); unlockNext(); }
 
 // ---------- render ----------
 function drawHud() {
@@ -411,10 +482,11 @@ function drawHud() {
     const t = cele.t, pop = Math.min(1, t * 6);
     if (!L.after) T('КОМБО x' + cele.n + '!', W / 2, 84, { size: 26 * pop, color: '#ffe36b', stroke: '#a3111f', sw: 7, rot: Math.sin(t * 9) * .05 });
     T(cele.title, W / 2, L.after ? 100 : 122, { size: L.after ? 30 : 12, color: '#fff', stroke: '#16161d', sw: L.after ? 8 : 4 });
-    if (t < 1.4) for (let i = 0; i < 3; i++) T('ХА', P.x - camR + Math.sin(t * 7 + i * 2) * 50, P.y - 110 - ((t * 60 + i * 26) % 70), { size: 11, color: '#ff8a94', stroke: '#16161d', rot: Math.sin(t * 5 + i) * .3 });
+    const word = cele.kind === 'howl' ? (t > .9 ? 'АУУУ' : '') : (cele.kind === 'laugh' || t < .5) ? 'ХА' : '';
+    if (word && !L.after) for (let i = 0; i < 3; i++) T(word, P.x - camR + Math.sin(t * 7 + i * 2) * 50, P.y - 110 - ((t * 60 + i * 26) % 70), { size: 11, color: '#ff8a94', stroke: '#16161d', rot: Math.sin(t * 5 + i) * .3 });
   }
   if (mode === 'dead' && modeT > 1) { T('ГАЛЯ ПАЛА', W / 2, 150, { size: 30, color: '#ff5b6b', stroke: '#16161d', sw: 8 }); T('кролики празднуют (недолго)', W / 2, 190, { size: 10, color: '#fff', stroke: '#16161d' }); if (modeT > 1.5 && (gameT * 2 | 0) % 2) T(TOUCH ? 'ТАПНИ' : 'ЛЮБАЯ КНОПКА', W / 2, 226, { size: 10, color: '#ffe36b', stroke: '#16161d' }); }
-  if (boss && L.boss && boss.won && mode === 'bossdeath') { T('ПОЛУЧЕНО: ШАПКА', W / 2, 96, { size: 22, color: '#ffe36b', stroke: '#16161d', sw: 7 }); T('(БОЛЬШАЯ)', W / 2, 128, { size: 14, color: '#fff', stroke: '#16161d', sw: 5 }); }
+  if (boss && L.boss && boss.won && mode === 'bossdeath') { T('ПОЛУЧЕНО: МАСКА КРОЛИКА', W / 2, 96, { size: 22, color: '#ffe36b', stroke: '#16161d', sw: 7 }); T('(ещё тёплая)', W / 2, 128, { size: 14, color: '#fff', stroke: '#16161d', sw: 5 }); }
 }
 function drawPlay() {
   const cx = Math.round(cam); camR = cx;
@@ -445,17 +517,18 @@ function drawPlay() {
   for (const q of gibs) if (!q.rest && inView(q.x)) drawGib(q);
   for (const p of parts) R(p.x, p.y, p.s, p.s, p.c);
   for (const f of fxs) { const k = f.t / f.max, r = 8 + k * 26; g.strokeStyle = k < .5 ? '#fff' : '#ffe36b'; g.lineWidth = 3; g.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + .3; g.moveTo(f.x + Math.cos(a) * r * .5, f.y + Math.sin(a) * r * .5); g.lineTo(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r); } g.stroke(); }
-  drawIce();
+  drawIce(); drawTikhon(); drawSouls();
   g.restore();
   drawBubbles();
   for (const f of floats) { const a = clamp((f.max - f.t) * 4, 0, 1); T(f.s, f.scr ? f.x : f.x - camR, f.y, { size: f.size, color: f.color, stroke: f.stroke, rot: f.rot, a, sw: 3 }); }
   drawHud();
 }
+let titleAnim = Math.random() < .5 ? 'shake' : 'vodka';
 function drawTitle() {
   g.drawImage(bgA, 0, 0); g.fillStyle = 'rgba(6,6,24,.45)'; g.fillRect(0, 0, W, H);
   R(0, FY, W, H - FY, '#141a2c'); g.fillStyle = pats.panel; g.fillRect(0, FY + 8, W, H); g.fillStyle = pats.hz; g.fillRect(0, FY + 2, W, 6); R(0, FY, W, 2, '#a9bddb');
   const t = sceneT;
-  drawWiggle(atlas, 170, FY, false, t);
+  { const fr = idleFrame(titleAnim, t); if (fr[1]) { drawWiggle(atlas, fr[0], 170, FY, false, t); drawNotes(170, FY, 1); } else spr(fr[0], 170, FY, false); }
   ['r_sit', 'r_give', 'r_sit', 'r_tremble', 'r_sit'].forEach((n, i) => { const x = 430 + i * 62, hop = ((t + i * .37) % 2.2) < .3 ? -Math.sin(((t + i * .37) % 2.2) / .3 * Math.PI) * 6 : 0; spr(n, x, FY + hop, true); });
   drawCase({ x: 300, y: FY, ci: 1, scale: 1, open: false, bump: 0 }); drawCase({ x: 760, y: FY, ci: 2, scale: 1, open: false, bump: 0 }); drawCase({ x: 752, y: FY - 34, ci: 0, scale: .8, open: false, bump: 0 });
   bubble('привет! :)', 492, FY - 54, { size: 8 });
@@ -468,20 +541,25 @@ function drawTitle() {
   if ((t * 2 | 0) % 2) T(TOUCH ? 'ТАПНИ, ЧТОБЫ НАЧАТЬ' : 'НАЖМИ ENTER ИЛИ ПРОБЕЛ', W / 2, 238, { size: 12, color: '#fff', stroke: '#16161d', sw: 4 });
   T(TOUCH ? '' : 'M — звук   P — пауза', W - 10, H - 10, { size: 7, color: '#8f9ad0', align: 'right' });
 }
-let selI = 4;
+let selI = 0;
+const slotCount = () => Math.max(6, Math.ceil((LEVELS.length + 1) / 3) * 3);
+const slotRect = i => [70 + (i % 3) * 226, 86 + (i / 3 | 0) * 150, 208, 130];
 function drawSelect() {
   R(0, 0, W, H, '#0a1030'); for (let y = 0; y < H; y += 6) R(0, y, W, 2, '#0d1640');
-  T('ВЫБЕРИ ЖЕРТВУ', W / 2, 44, { size: 20, color: '#ffe36b', stroke: '#16161d', sw: 6 });
-  const names = ['ПУШИСТИК', 'ПУШИСТИК', 'ПУШИСТИК', 'ПУШИСТИК', 'ГАЛЯ', 'ПУШИСТИК', 'ПУШИСТИК', 'ПУШИСТИК', 'ОПЯТЬ ОН'];
-  const fb = F.b_wave, fg = F.g_idle;
-  for (let i = 0; i < 9; i++) {
-    const x = 262 + (i % 3) * 96, y = 74 + (i / 3 | 0) * 112;
-    R(x - 4, y - 4, 92, 92, i === selI && (sceneT * 6 | 0) % 2 ? '#ffe36b' : '#39e0d0'); R(x, y, 84, 84, i === 4 ? '#5a1420' : '#1b2a6b');
-    if (i === 4) g.drawImage(atlas, fg[0] + 6, fg[1], 42, 42, x, y, 84, 84);
-    else g.drawImage(atlas, fb[0] + 36, fb[1] + 34, 84, 84, x, y, 84, 84);
-    T(names[i], x + 42, y + 97, { size: 7, color: i === 4 ? '#ff8a94' : '#fff' });
+  T('ВЫБЕРИ УРОВЕНЬ', W / 2, 44, { size: 20, color: '#ffe36b', stroke: '#16161d', sw: 6 });
+  const n = slotCount(), row0 = Math.max(0, Math.min((selI / 3 | 0) - 1, Math.ceil(n / 3) - 2));
+  for (let i = row0 * 3; i < Math.min(n, row0 * 3 + 6); i++) {
+    const r = slotRect(i - row0 * 3), x = r[0], y = r[1], w = r[2], h = r[3], lv = LEVELS[i], open = lv && i < unlocked;
+    R(x - 4, y - 4, w + 8, h + 8, i === selI ? ((sceneT * 6 | 0) % 2 ? '#ffe36b' : '#fff') : open ? '#39e0d0' : '#2a3350');
+    R(x, y, w, h, open ? '#1b2a6b' : '#11162a');
+    T('ЭТАП ' + (i + 1), x + w / 2, y + 18, { size: 9, color: open ? '#39e0d0' : '#566a92' });
+    if (lv) {
+      wrap(lv.name, 15).forEach((ln, j) => T(ln, x + w / 2, y + 44 + j * 16, { size: 10, color: open ? '#fff' : '#566a92' }));
+      if (open) { spr('r_sit', x + 26, y + h - 6, false); T(i < unlocked - 1 ? 'ПРОЙДЕН' : (lv.sub || ''), x + w / 2 + 14, y + h - 22, { size: 7, color: i < unlocked - 1 ? '#3ddc6a' : '#ffd0e8' }); if (lv.author) T('автор: ' + lv.author, x + w / 2 + 14, y + h - 10, { size: 6, color: '#8f9ad0' }); }
+      else { drawCase({ x: x + 26, y: y + h - 8, ci: 4, scale: .8, open: false, bump: 0 }); T('ЗАКРЫТ', x + w / 2 + 14, y + h - 26, { size: 8, color: '#ff6b6b' }); T('пройди этап ' + i, x + w / 2 + 14, y + h - 12, { size: 6, color: '#566a92' }); }
+    } else { T('СКОРО', x + w / 2, y + 58, { size: 12, color: '#566a92' }); T('место для', x + w / 2, y + 86, { size: 7, color: '#3d4d6e' }); T('твоего уровня', x + w / 2, y + 100, { size: 7, color: '#3d4d6e' }); }
   }
-  T('(выбора нет)', W / 2, H - 22, { size: 9, color: '#8f9ad0' });
+  T(TOUCH ? 'тапни по уровню' : 'стрелки — выбрать, ENTER — играть', W / 2, H - 20, { size: 8, color: '#8f9ad0' });
 }
 function drawBossIntro() {
   const t = sceneT;
@@ -508,9 +586,8 @@ function drawEnding() {
     rows.forEach((r, i) => { if (t > 4.4 + i * .5) { T(r[0], W / 2 - 14, 152 + i * 24, { size: 10, color: '#8f9ad0', align: 'right' }); T(String(r[1]), W / 2 + 14, 152 + i * 24, { size: 10, color: '#ffe36b', align: 'left' }); } });
     if (t > 8) T('РАНГ: ' + rankOf(), W / 2, 316, { size: 14, color: '#3ddc6a', stroke: '#16161d', sw: 5 });
     if (t > 9 && (t * 2 | 0) % 2) T(TOUCH ? 'ТАПНИ — ТИТРЫ' : 'ENTER — ТИТРЫ', W / 2, 360, { size: 10, color: '#fff' });
-    const dn = (t / .19 | 0) % 2 ? 'g_dance2' : 'g_dance1', dfl = (t / .76 | 0) % 2 === 1, dy = 430 - Math.abs(Math.sin(t * 16)) * 5;
-    spr('hat', 90 + (dfl ? -4 : 4), dy - HEADTOP[dn] + 24, dfl, { sx: 1.7 });
-    spr(dn, 90, dy, dfl, { img: galB[3] });
+    if (P.masked) spr('g_mask' + ((t / .35 | 0) % 3), 90, 430 - Math.abs(Math.sin(t * 6)) * 4, false, { img: galB[3] });
+    else spr((t / .19 | 0) % 2 ? 'g_dance2' : 'g_dance1', 90, 430 - Math.abs(Math.sin(t * 16)) * 5, (t / .76 | 0) % 2 === 1, { img: galB[2] });
   } else {
     const y0 = H + 20 - (t - credits.t0) * 30;
     credits.rows.forEach((r, i) => { const y = y0 + r.y; if (y > -20 && y < H + 20) { if (r.b) T(r.a, W / 2 - 12, y, { size: 9, color: '#fff', align: 'right' }), T(r.b, W / 2 + 12, y, { size: 8, color: '#8f9ad0', align: 'left' }); else T(r.a, W / 2, y, { size: r.size || 10, color: r.color || '#ffe36b' }); } });
@@ -564,12 +641,15 @@ function step(dt) {
   shake = Math.max(0, shake - dt * 34); flash = Math.max(0, flash - dt * 1.8);
   const go = hit('S') || hit('J') || hit('A') || hit('T');
   switch (scene) {
-    case 'title': if (sceneT > .4 && go && !fadeDir) { sfx.ok(); fadeTo(() => { scene = 'select'; sceneT = 0; selI = 4; }); } break;
-    case 'select':
-      if (hit('L')) { selI = (selI + 8) % 9; sfx.select(); } if (hit('R')) { selI = (selI + 1) % 9; sfx.select(); }
-      if (hit('D')) { selI = (selI + 3) % 9; sfx.select(); }
-      if (sceneT > .4 && (hit('S') || hit('A') || hit('T') || hit('J')) && !fadeDir) { sfx.ok(); fadeTo(startLevel); }
+    case 'title': if (sceneT > .4 && go && !fadeDir) { sfx.ok(); fadeTo(() => { scene = 'select'; sceneT = 0; selI = Math.min(unlocked, LEVELS.length) - 1; }); } break;
+    case 'select': {
+      const n = slotCount(); let ok = hit('S') || hit('A');
+      if (hit('L')) { selI = (selI + n - 1) % n; sfx.select(); } if (hit('R')) { selI = (selI + 1) % n; sfx.select(); }
+      if (hit('D')) { selI = (selI + 3) % n; sfx.select(); } if (hit('J')) { selI = (selI + n - 3) % n; sfx.select(); }
+      if (hit('T')) { const row0 = Math.max(0, Math.min((selI / 3 | 0) - 1, Math.ceil(n / 3) - 2)); for (let i = 0; i < 6; i++) { const r = slotRect(i); if (tapX > r[0] && tapX < r[0] + r[2] && tapY > r[1] && tapY < r[1] + r[3]) { selI = row0 * 3 + i; ok = true; } } }
+      if (sceneT > .4 && ok && !fadeDir) { if (LEVELS[selI] && selI < unlocked) { sfx.ok(); const i = selI; fadeTo(() => startLevel(i)); } else sfx.buzz(); }
       break;
+    }
     case 'play': updatePlay(dt * slow); break;
     case 'bossintro':
       if (sceneT > .9 && sceneT < 1.8 && ((sceneT - .9) * 9 | 0) !== ((sceneT - dt - .9) * 9 | 0)) sfx.blip();
@@ -578,7 +658,7 @@ function step(dt) {
       break;
     case 'ending':
       if (!credits) { if (sceneT > 9 && go) { credits = makeCredits(); sfx.ok(); } }
-      else if ((credits.done || sceneT - credits.t0 > 8) && go && !fadeDir) fadeTo(() => { credits = null; stopSong(); scene = 'title'; sceneT = 0; newGame(); });
+      else if ((credits.done || sceneT - credits.t0 > 8) && go && !fadeDir) fadeTo(() => { credits = null; stopSong(); curLevel = 0; newGame(); scene = 'select'; sceneT = 0; selI = Math.min(unlocked, LEVELS.length) - 1; });
       break;
   }
 }
@@ -607,6 +687,6 @@ window.__dbg = {
   get s() { return { scene, mode, x: P.x, y: P.y, hp: P.hp, kills: stats && stats.kills, hats: stats && stats.hats, boss: boss && { hp: boss.hp, state: boss.state, phase: boss.phase, x: boss.x }, cam, rabbits: L && L.rabbits.length, chain, fade }; },
   warp(x, y) { P.x = x; P.y = y === undefined ? FY : y; P.vx = P.vy = 0; cam = clamp(x - 360, 0, L.w - W); },
   god(v) { P.maxhp = v ? 99 : 5; P.hp = P.maxhp; },
-  start() { startLevel(); }, boss() { startBoss(); }, bosshp(n) { boss.hp = n; }, ending() { startEnding(); },
+  start() { startLevel(0); }, tikhon() { startTikhon(); }, cele(k) { cele.n = 4; startCelebrate(); if (k) cele.kind = k; }, idle(k) { P.idleT = 4; P.idleAnim = k; P.idleA = 0; }, boss() { startBoss(); }, bosshp(n) { boss.hp = n; }, ending() { startEnding(); },
   skip() { iceSeen = true; fallCase = true; }, L: () => L, P, songs: SONGS, n2f: N2F, audio: () => AC && { state: AC.state, song: song && song.name }
 };

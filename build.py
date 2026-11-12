@@ -1,6 +1,8 @@
 import json, os
 a = json.load(open('out/assets.json'))
-js = '\n'.join(open('js/'+f).read() for f in ['01_core.js','02_world.js','03_game.js'])
+import glob
+files = ['js/01_core.js', 'js/02_world.js', 'js/03_game.js'] + sorted(f for f in glob.glob('js/levels/*.js') if not os.path.basename(f).startswith('_'))
+js = '\n'.join(open(f).read() for f in files)
 js = '(function(){\n' + js.replace("'use strict';\n", '', 1) + '\n})();'
 js = "'use strict';\n" + js
 tpl = open('index.tpl.html').read()

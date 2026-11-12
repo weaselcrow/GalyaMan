@@ -67,9 +67,16 @@ def box_down(pm, al, scale):
     return np.clip(rgb, 0, 255), a2
 
 
-def cut(sheet, n, scale, gap=15, stems=False, pad=0):
-    a = np.array(Image.open(SRC % sheet).convert('RGB')).astype(float)
-    pm, al = matte(a, stems)
+def cut(sheet, n, scale, gap=15, stems=False, pad=0, path=None, alpha=False):
+    im = Image.open(path or (SRC % sheet))
+    if alpha:
+        # sheet already has a real alpha channel
+        rgba = np.array(im.convert('RGBA')).astype(float)
+        al = rgba[..., 3] / 255.0
+        pm = rgba[..., :3] * al[..., None]
+    else:
+        a = np.array(im.convert('RGB')).astype(float)
+        pm, al = matte(a, stems)
     solid = al > 0.5
     rs = runs(solid.sum(0) > 0, gap)
     # drop specks

@@ -64,6 +64,7 @@ function bindBtn(el, k) {
 }
 bindBtn(document.getElementById('bj'), 'J');
 bindBtn(document.getElementById('ba'), 'A');
+bindBtn(document.getElementById('bd'), 'D');
 (function () {
   const el = document.getElementById('dpad'); let pid = null;
   const set = e => {
@@ -157,7 +158,12 @@ const sfx = {
   ok() { tn('square', 660, 660, .07, .09); tn('square', 990, 990, .14, .09, .07); },
   boom() { nz(0, 1.1, .8, 'lowpass', 2000, 50); tn('sine', 95, 22, .9, .7); nz(.05, .5, .4, 'bandpass', 700, 200, 2); },
   zap() { nz(0, .12, .12, 'highpass', 5000); tn('sawtooth', 1800, 300, .1, .06); },
-  pop() { tn('sine', 500, 1400, .06, .14); }
+  pop() { tn('sine', 500, 1400, .06, .14); },
+  howl() { wail(.55, 250, 560, .22, 5, 12); wail(1.7, 560, 430, .24, 6, 26, .5); },
+  moto() { tn('sawtooth', 62, 84, .1, .16); tn('square', 44, 52, .1, .1); },
+  gulp() { for (let i = 0; i < 3; i++) tn('sine', 240, 130, .09, .2, i * .22); },
+  aah() { nz(0, .5, .12, 'bandpass', 1400, 700, 1.2); },
+  lighter() { nz(0, .03, .25, 'highpass', 4000); nz(.12, .03, .25, 'highpass', 4000); }
 };
 
 // music: tiny step sequencer. note format "A4:2" (len in 16ths), "-" = rest

@@ -3,6 +3,7 @@ let scene = 'load', sceneT = 0;
 let L = null, cam = 0, camR = 0, look = 0;
 let mode = 'play', modeT = 0;
 let hitstop = 0, shake = 0, slow = 1, flash = 0, fade = 0, fadeDir = 0, fadeCb = null;
+let souls = [], tk = null;
 let parts = [], gibs = [], stains = [], splats = [], lens = [], floats = [], pickups = [], fxs = [];
 let stats = null, memorial = [];
 let chain = 0, chainT = 0, pendingCele = false, cele = { t: 0, title: '', n: 3 };
@@ -10,10 +11,11 @@ let ice = null, iceSeen = false;
 let boss = null, tears = [], puddles = [];
 let banner = null, letterT = 0, walker = null, walkerT = 12, fallCase = false;
 let paused = false, gameT = 0;
-const P = { x: 90, y: FY, w: 24, h: 76, vx: 0, vy: 0, face: 1, onGround: true, ground: null, hp: 5, maxhp: 5, inv: 0, hurtT: 0, atk: 0, atkSet: null, coyote: 0, jbuf: 0, idleT: 0, runT: 0, emote: '', emoteT: 0, safeX: 90, safeY: FY, bub: null, bigHat: 0, wigT: 0, hitWall: false, slip: false };
+const P = { x: 90, y: FY, w: 24, h: 76, crouch: false, idleAnim: '', idleA: 0, idleF: '', masked: 0, vx: 0, vy: 0, face: 1, onGround: true, ground: null, hp: 5, maxhp: 5, inv: 0, hurtT: 0, atk: 0, atkSet: null, coyote: 0, jbuf: 0, idleT: 0, runT: 0, emote: '', emoteT: 0, safeX: 90, safeY: FY, bub: null, bigHat: 0, wigT: 0, hitWall: false, slip: false };
 const ATK_T = 0.3, CELE_T = 3.3, GRAV = 1500;
 
 const NAMES = [
+  ['Степашка', 'верил, что это просто коллега'], ['Степашка-младший', 'уже копил ей на кольцо'], ['Степан Степаныч', 'оплатил жене отпуск с её «братом»'],
   ['Зефирка', 'любила одуванчики'], ['Пончик', 'копил на велосипед'], ['Снежок', 'боялся громких звуков'], ['Геннадий', 'платил ипотеку'],
   ['Ватрушка', 'пекла морковный пирог'], ['Облачко', 'верило в людей'], ['Кузя', 'хотел стать космонавтом'], ['Пельмешек', 'только вчера родился'],
   ['Виталий Сергеевич', 'почти вышел на пенсию'], ['Сахарок', 'никого не обижал'], ['Плюша', 'вязала шарфы'], ['Беляш', 'играл на гармошке'],
@@ -24,8 +26,9 @@ const NAMES = [
   ['Тихон', 'молчал'], ['Капустин', 'вёл собрание'], ['Лапка', 'принесла платочек'], ['Носик', 'бежал на помощь'], ['Пятнышко', 'верил в дружбу'], ['Мякиш', 'был мягким']
 ];
 let nameI = 0;
-const LAST = ['за что?..', 'ай', 'я же ничего…', 'мама…', 'скажите жене…', 'ой', 'а морковка?..', 'так нечестно', 'я думал, мы друзья', 'хнык'];
+const LAST = ['жена и не заметит', 'хоть ипотеку не платить', 'передайте ей… а, неважно', 'за что?..', 'ай', 'я же ничего…', 'мама…', 'скажите жене…', 'ой', 'а морковка?..', 'так нечестно', 'я думал, мы друзья', 'хнык'];
 const BONK = ['БДЫЩ!', 'ХРЯСЬ!', 'ШМЯК!', 'БАМ!', 'ЧВЯК!', 'БОНЬК!', 'ХЛОП!', 'ТЫДЫЩ!'];
+const AWE_HOWL = ['она воет…', 'это волк?!', 'мы для неё еда'];
 const AWE = ['…', 'мамочки', 'она смеётся…', 'она танцует?!', 'не шевелись', 'я домой хочу', 'это сон'];
 
 function mkRabbit(x, y, kind, line, o) {
@@ -36,6 +39,35 @@ function mkRabbit(x, y, kind, line, o) {
 function mkCase(x, y, content, ci, scale, main) { return { x, y, content, ci: ci || 0, scale: scale || 1, main: !!main, open: false, vx: 0, vy: 0, fall: false, fallen: false, t: 0, bump: 0 }; }
 function say(e, s, t) { e.bub = { s, t: t || 2.4 }; }
 
+// Заготовка уровня: возвращает пустой уровень и короткие команды для его сборки.
+// Ею пользуются все уровни, в том числе файлы друзей в js/levels/.
+function levelKit(width) {
+  const l = { w: width, fy: FY, solids: [], rabbits: [], cases: [], signs: [], zaps: [], spikes: [], movers: [], deco: [], checks: [], pits: [], boss: false, gateX: width - 100, gate: 0 };
+  const floors = [];
+  const k = {
+    l,
+    fl: (a, b) => { floors.push([a, b]); l.solids.push({ x: a, y: FY, w: b - a, h: 120, k: 'f' }); },
+    bl: (x, y, w, h) => l.solids.push({ x, y, w, h, k: 'b' }),
+    pl: (x, y, w) => l.solids.push({ x, y, w, h: 12, k: 'p' }),
+    mv: (x0, x1, y, w, sp) => { const s = { x: x0, y, w, h: 12, k: 'p', mv: { x0, x1, sp: sp || 45, d: 1 } }; l.solids.push(s); l.movers.push(s); },
+    rb: (x, y, kind, line, o) => { const r = mkRabbit(x, y, kind, line, o); l.rabbits.push(r); return r; },
+    cs: (x, y, content, ci) => l.cases.push(mkCase(x, y, content, ci, 1, true)),
+    spikes: (x, w, y) => l.spikes.push({ x, y: (y === undefined ? FY : y) - 12, w, h: 12 }),
+    zap: (x, yTop, period, phase) => l.zaps.push({ x, y0: yTop === undefined ? 180 : yTop, y1: FY, per: period || 2.6, ph: phase || 0 }),
+    sign: (x, y, lines, w) => l.signs.push({ x, y, w: w || Math.max.apply(null, lines.map(s => s.length)) * 8 + 24, lines }),
+    check: x => l.checks.push({ x, on: false }),
+    deco: (x, ci) => l.deco.push({ x, y: FY, ci: ci || 0, s: .8 }),
+    // закончить уровень: стены по краям, ямы между кусками пола, счётчики
+    done() {
+      l.solids.push({ x: -60, y: -300, w: 60, h: 800, k: 'b', hid: true }, { x: width, y: -300, w: 80, h: 800, k: 'b', hid: true });
+      floors.sort((a, b) => a[0] - b[0]);
+      for (let i = 1; i < floors.length; i++) if (floors[i][0] > floors[i - 1][1]) l.pits.push([floors[i - 1][1], floors[i][0]]);
+      l.casesTotal = l.cases.length + (l.fallX ? 1 : 0); l.rabTotal = l.rabbits.length;
+      return l;
+    }
+  };
+  return k;
+}
 function buildLevel1() {
   const l = { w: 6960, fy: FY, solids: [], rabbits: [], cases: [], signs: [], zaps: [], spikes: [], movers: [], deco: [], checks: [], pits: [], boss: false, gateX: 6860, gate: 0, name: 'ЭТАП 1' };
   const fl = (a, b) => l.solids.push({ x: a, y: FY, w: b - a, h: 120, k: 'f' });
@@ -58,7 +90,7 @@ function buildLevel1() {
   rb(1470, FY, 'sit', 'только не толкайся');
   bl(1560, 346, 60, 40); bl(1620, 306, 90, 80); rb(1668, 306, 'give', 'возьми две!');
   l.spikes.push({ x: 1716, y: FY - 12, w: 50, h: 12 });
-  rb(1850, FY, 'sit', 'дальше страшно');
+  rb(1850, FY, 'sit', 'я Степашка. меня и так жизнь наказала');
   // C: яма
   pl(1950, 346, 70); pl(2075, 322, 70); pl(2195, 346, 62); pl(1988, 250, 66);
   rb(2112, 322, 'sit', 'я боюсь высоты');
@@ -70,7 +102,7 @@ function buildLevel1() {
   rb(2960, FY, 'run', 'МАМА!');
   l.iceX = 3120;
   rb(3400, FY, 'sit', 'я уже уезжаю, честно!'); cs(3438, FY, 'carrots', 3);
-  rb(3610, FY, 'give', 'у меня есть ещё капуста!');
+  rb(3610, FY, 'give', 'жене нёс. она у «подруги» третий месяц');
   // E: мостик и разряды
   bl(3740, 346, 60, 40); bl(3800, 306, 90, 80); pl(3920, 270, 340);
   l.zaps.push({ x: 3992, y0: 282, y1: FY, per: 2.6, ph: 0 }, { x: 4196, y0: 282, y1: FY, per: 2.6, ph: 1.3 });
@@ -88,8 +120,9 @@ function buildLevel1() {
   rb(5560, FY, 'give', 'мир? дружба? морковка?');
   bl(5680, 346, 80, 40); bl(5760, 306, 84, 80); cs(5718, 346, 'letter', 4);
   rb(5802, 306, 'sit', 'мы за мир!', { sign: 'МИР' });
-  rb(5950, FY, 'sit', 'я занимал!'); rb(6004, FY, 'sit', 'нет, я!');
-  rb(6110, FY, 'sit', 'я слишком стар для этого');
+  rb(5950, FY, 'sit', 'я ей айфон в кредит взял'); rb(6004, FY, 'sit', 'а я её маме зубы оплатил');
+  l.signs.push({ x: 5868, y: 236, w: 224, lines: ['КЛУБ СТЕПАШЕК:', '«ОНА НЕ ИЗМЕНЯЕТ,', 'ОНА ПРОСТО УСТАЛА»'] });
+  rb(6110, FY, 'sit', 'жена ушла на йогу. в 2019-м');
   rb(6230, FY, 'run', 'я предупрежу остальных!');
   bl(6300, 326, 70, 60); pl(6400, 262, 70); pl(6500, 200, 72); cs(6536, 200, 'hats', 1);
   rb(6690, FY, 'sit', 'дальше нельзя… пожалуйста?');
@@ -102,6 +135,8 @@ function buildLevel1() {
   l.rabTotal = l.rabbits.length;
   return l;
 }
+// Список уровней. Новый уровень добавляется строкой LEVELS.push({...}) в своём файле в js/levels/.
+const LEVELS = [{ name: 'КРЕПОСТЬ ПУШИСТЫХ', sub: 'босс: Пушистик', build: buildLevel1, boss: true }];
 function buildBossLevel() {
   const l = { w: W, fy: FYB, solids: [], rabbits: [], cases: [], signs: [], zaps: [], spikes: [], movers: [], deco: [], checks: [], pits: [], boss: true, name: 'ЛОГОВО' };
   l.solids.push({ x: -200, y: FYB, w: W + 400, h: 120, k: 'f', hid: true }, { x: -60, y: -300, w: 68, h: 800, k: 'b', hid: true }, { x: W - 8, y: -300, w: 68, h: 800, k: 'b', hid: true });
@@ -196,6 +231,7 @@ function updateFx(dt) {
   for (let i = floats.length - 1; i >= 0; i--) { const f = floats[i]; f.t += dt; f.y += f.vy * dt; if (f.t > f.max) floats.splice(i, 1); }
   for (let i = lens.length - 1; i >= 0; i--) { const l = lens[i]; l.t += dt; if (l.t > l.max) lens.splice(i, 1); }
   for (const s of splats) for (const d of s.dr) if (d.len < d.max) d.len += d.sp * dt;
+  for (let i = souls.length - 1; i >= 0; i--) { const o = souls[i]; o.t += dt; o.y -= 24 * dt; if (o.t > 3.4) souls.splice(i, 1); }
   for (let i = fxs.length - 1; i >= 0; i--) { fxs[i].t += dt; if (fxs[i].t > fxs[i].max) fxs.splice(i, 1); }
   // pickups
   for (let i = pickups.length - 1; i >= 0; i--) {
@@ -237,7 +273,8 @@ function killRabbit(r, dir) {
   floater('ПРОЩАЙ, ' + r.name.toUpperCase(), cx, cy - 46, { color: '#ff8a94', size: 8, t: 1.6, vy: -22 });
   if (boss && !boss.dead && L.boss) { boss.grief = 1.6; say(boss, (r.name + '!!! НЕЕЕТ!').toUpperCase(), 1.6); sfx.scream(.6); }
   chain++; chainT = 3.6; stats.best = Math.max(stats.best, chain);
-  if (chain % 3 === 0) { pendingCele = true; cele.n = chain; }
+  if (chain % 4 === 0) { pendingCele = true; cele.n = chain; }
+  if (Math.random() < .35) souls.push({ x: cx, y: cy, t: 0, sc: r.scale, s: pick(['я тебя прощаю, Галина…', 'зла не держу, Галина', 'Галина, береги себя', 'я тебя прощаю, Галина… почти', 'спасибо, Галина. дома было хуже']) });
   else if (!P.bub) {
     const z = Math.random();
     if (z < .3) { P.emote = 'laugh'; P.emoteT = .75; say(P, pick(['АХАХАХА!', 'ХЕ-ХЕ-ХЕ', 'ХА! ХА!', 'ЫХЫХЫ']), 1); sfx.laugh(5, rnd(520, 640)); }
@@ -250,11 +287,15 @@ function doBark() {
 }
 function startCelebrate() {
   pendingCele = false; mode = 'celebrate'; cele.t = 0;
-  const lvl = Math.floor(cele.n / 3);
-  cele.title = lvl <= 1 ? pick(['ШАПОЧНЫЙ ХЕТ-ТРИК', 'ТРОЙНОЙ УДАР', 'ГАЛЯ В УДАРЕ']) : lvl === 2 ? pick(['ШЕСТЬ ШАПОК ПОДРЯД', 'ГАЛЮ НЕ ОСТАНОВИТЬ']) : pick(['КРОЛИЧИЙ АПОКАЛИПСИС', 'ЗОВИТЕ ЗООЗАЩИТУ']);
-  P.vx = 0; P.atk = 0; sfx.maniac(); playSong('dance');
-  for (const r of L.rabbits) if (!r.dead && inView(r.x)) { r.awe = true; r.vx = 0; if (Math.random() < .75) say(r, pick(AWE), 2.4); }
-  if (boss && L.boss && !boss.dead) say(boss, pick(['ПОЧЕМУ ОНА ТАНЦУЕТ?!', 'ЭТО НЕ СМЕШНО!', 'ОНИ БЫЛИ МОИМИ ДРУЗЬЯМИ…']), 2.4);
+  const lvl = Math.floor(cele.n / 4);
+  cele.title = lvl <= 1 ? pick(['ШАПОЧНЫЙ ПОКЕР', 'ЧЕТЫРЕ ПОДРЯД', 'ГАЛЯ В УДАРЕ']) : lvl === 2 ? pick(['ВОСЕМЬ ШАПОК ПОДРЯД', 'ГАЛЮ НЕ ОСТАНОВИТЬ']) : pick(['КРОЛИЧИЙ АПОКАЛИПСИС', 'ЗОВИТЕ ЗООЗАЩИТУ']);
+  cele.kind = P.masked ? 'mask' : pick(['dance', 'howl', 'laugh']);
+  P.vx = 0; P.atk = 0; P.crouch = false; P.h = 76; P.idleAnim = '';
+  if (cele.kind === 'howl') { stopSong(); sfx.howl(); }
+  else if (cele.kind === 'laugh') { stopSong(); sfx.maniac(); setTimeout(() => { if (mode === 'celebrate') sfx.maniac(); }, 1300); }
+  else { sfx.laugh(5, 600); playSong('dance'); }
+  for (const r of L.rabbits) if (!r.dead && inView(r.x)) { r.awe = true; r.vx = 0; if (Math.random() < .75) say(r, pick(cele.kind === 'howl' ? AWE_HOWL : AWE), 2.4); }
+  if (boss && L.boss && !boss.dead) say(boss, cele.kind === 'howl' ? 'ОНА ЧТО, ВОЕТ?!' : cele.kind === 'dance' ? 'ПОЧЕМУ ОНА ТАНЦУЕТ?!' : pick(['ЭТО НЕ СМЕШНО!', 'ОНИ БЫЛИ МОИМИ ДРУЗЬЯМИ…']), 2.4);
 }
 function endCelebrate() {
   mode = 'play'; for (const r of L.rabbits) r.awe = false;
@@ -439,3 +480,13 @@ function drawBubbles() {
   if (P.bub) bubble(P.bub.s, P.x - camR, P.y - 96, { size: 10, max: 14, bg: '#ffe9ec', color: '#a3111f' });
 }
 function drawIceCone(x, y) { spr('cone', x, y, false); }
+
+function drawSouls() {
+  for (const o of souls) {
+    if (!inView(o.x)) continue;
+    const a = clamp(Math.min(o.t * 3, (3.4 - o.t) * 1.5), 0, 1) * .6, x = o.x + Math.sin(o.t * 3) * 6;
+    spr('r_sit', x, o.y + 20, P.x < x, { img: atlasW, sx: o.sc, a: a * .5 }); spr('r_sit', x, o.y + 20, P.x < x, { sx: o.sc, a });
+    g.globalAlpha = a; R(x - 9 * o.sc, o.y - 34 * o.sc, 18 * o.sc, 3, '#ffe36b'); g.globalAlpha = 1;
+    if (o.t > .3 && o.t < 3) bubble(o.s, x - camR, o.y - 38 * o.sc, { size: 8, max: 16, bg: '#eaf6ff', color: '#3a5a8a' });
+  }
+}
