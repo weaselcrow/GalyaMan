@@ -42,7 +42,7 @@ const KEYMAP = {
   ArrowLeft: 'L', KeyA: 'L', ArrowRight: 'R', KeyD: 'R',
   ArrowUp: 'J', KeyW: 'J', Space: 'J', KeyZ: 'J',
   KeyX: 'A', KeyJ: 'A', KeyK: 'A', KeyF: 'A', ControlLeft: 'A', ControlRight: 'A',
-  ArrowDown: 'D', KeyS: 'D', Enter: 'S', NumpadEnter: 'S', KeyM: 'M', KeyP: 'P', Escape: 'P'
+  ArrowDown: 'D', KeyS: 'D', KeyC: 'DS', ShiftLeft: 'DS', ShiftRight: 'DS', KeyL: 'DS', Enter: 'S', NumpadEnter: 'S', KeyM: 'M', KeyP: 'P', Escape: 'P'
 };
 function press(k) { if (!held[k]) pressed[k] = true; held[k] = true; if (k !== 'M' && k !== 'P') anyPress = true; audioInit(); }
 function release(k) { held[k] = false; }
@@ -64,6 +64,7 @@ function bindBtn(el, k) {
 }
 bindBtn(document.getElementById('bj'), 'J');
 bindBtn(document.getElementById('ba'), 'A');
+if (document.getElementById('bd')) bindBtn(document.getElementById('bd'), 'DS');
 (function () {
   const el = document.getElementById('dpad'); let pid = null;
   const set = e => {
@@ -284,9 +285,10 @@ function bubble(s, x, y, o) {
 }
 
 // ---------- sprites ----------
-let atlas, atlasW, bg1, bg2, bgA, bgB, galB = [];
+let atlas, atlasW, atlas2, atlasW2, bg1, bg2, bgA, bgB, galB = [];
 function spr(name, x, y, flip, o) {
-  const f = F[name], img = (o && o.img) || atlas;
+  const f = F[name]; let img = (o && o.img) || atlas;
+  if (f[6]) img = (o && o.img === atlasW) ? atlasW2 : atlas2; // спрайты сюжета лежат во втором атласе
   x = Math.round(x); y = Math.round(y);
   const sx = (o && o.sx) || 1, sy = (o && o.sy) || sx, rot = (o && o.rot) || 0;
   if (o && o.a !== undefined) g.globalAlpha = o.a;
@@ -326,7 +328,7 @@ function makeChunks(name, nx, ny) {
   const f = F[name], out = [], cw = Math.ceil(f[2] / nx), ch = Math.ceil(f[3] / ny);
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const [c, x] = mkCanvas(cw, ch);
-    x.drawImage(atlas, f[0] + i * cw, f[1] + j * ch, cw, ch, 0, 0, cw, ch);
+    x.drawImage(f[6] ? atlas2 : atlas, f[0] + i * cw, f[1] + j * ch, cw, ch, 0, 0, cw, ch);
     x.globalCompositeOperation = 'source-atop';
     const edge = (ex, ey, ew, eh) => { for (let k = 0; k < (ew + eh) * 1.3; k++) { x.fillStyle = pick(BLOOD); const t = Math.max(2, Math.round(Math.min(cw, ch) / 7)); x.fillRect(ex + rnd(ew) - (ew < eh ? rnd(t) : 0), ey + rnd(eh) - (eh < ew ? rnd(t) : 0), rint(1, t), rint(1, t)); } };
     if (i > 0) edge(0, 0, 2, ch); if (i < nx - 1) edge(cw - 2, 0, 2, ch);
@@ -340,6 +342,7 @@ function buildArt() {
   // white silhouette atlas for hit flashes
   let c, x;
   [c, x] = mkCanvas(atlas.width, atlas.height); x.drawImage(atlas, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); atlasW = c;
+  if (atlas2) { [c, x] = mkCanvas(atlas2.width, atlas2.height); x.drawImage(atlas2, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); atlasW2 = c; }
   // Galya gets bloodier with every hat
   const names = Object.keys(F).filter(n => n[0] === 'g' && n[1] === '_');
   let seed = 7; const sr = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };

@@ -225,7 +225,7 @@ function updateFx(dt) {
 
 // ---------- kills ----------
 function killRabbit(r, dir) {
-  r.dead = true; stats.kills++;
+  r.dead = true; stats.kills++; if (L.story) storyKill(r);
   const cx = r.x, cy = r.y - 20 * r.scale;
   gore(cx, cy, dir, r.scale);
   wallSplat(cx, cy - 6);
@@ -258,7 +258,7 @@ function startCelebrate() {
 }
 function endCelebrate() {
   mode = 'play'; for (const r of L.rabbits) r.awe = false;
-  playSong(L.boss ? 'boss' : 'level'); P.idleT = 0;
+  playSong(curSong()); P.idleT = 0;
   if (Math.random() < .6) doBark();
 }
 
@@ -302,7 +302,8 @@ function updateRabbits(dt) {
     if (!inView(r.x, 260)) continue;
     const dx = P.x - r.x, dist = Math.abs(dx), near = Math.abs(P.y - r.y) < 130;
     if (!r.said && dist < 215 && near && r.line && mode === 'play') { r.said = true; say(r, r.line, 2.8); sfx.blip(); }
-    if (r.kind === 'run') {
+    if (r.hostile) storyRabbit(r, dt, dx, dist, near);
+    else if (r.kind === 'run') {
       if (r.state !== 'flee' && dist < 205 && near) { r.state = 'flee'; sfx.squeak(); }
       if (r.state === 'flee') {
         const dir = dx > 0 ? -1 : 1; r.face = dir;
@@ -327,6 +328,7 @@ function updateRabbits(dt) {
 }
 function hitRabbit(r, dir) {
   if (r.ko > 0 || r.dead) return;
+  if (r.hp > 1) { armorHit(r, dir); return; }
   r.ko = .13; r.koDir = dir; r.bub = null; hitstop = .055; sfx.bonk(); sfx.squeak();
   say(r, pick(LAST), .5);
   floater(pick(BONK), r.x + dir * 10, r.y - 56, { color: '#ffe36b', size: 14, t: .5, rot: rnd(-.3, .3), vy: -60 });
@@ -336,6 +338,7 @@ function hitRabbit(r, dir) {
 // ---------- drawing: world pieces ----------
 function drawSolid(s) {
   if (s.hid) return;
+  if (L.th) return drawSolidTh(s);
   const x = Math.round(s.x), y = Math.round(s.y), w = Math.round(s.w);
   if (s.k === 'f') {
     g.fillStyle = pats.panel; g.fillRect(x, y + 8, w, H - y);
@@ -427,6 +430,7 @@ function drawRabbit(r) {
   else if (r.state === 'offer') { name = 'r_give'; oy = -Math.abs(Math.sin(r.t * 5)) * 2; }
   else { const ph = r.t % 2.6; if (ph < .3) oy = -Math.sin(ph / .3 * Math.PI) * 5; }
   if (mode === 'ice' && ice) flip = ice.x < r.x;
+  if (r.spr) { name = r.spr; if (r.hostile) { flip = r.face < 0; if (r.tele > 0) ox = (gameT * 40 | 0) % 2 ? 2 : -2; } }
   spr(name, r.x + ox, r.y + oy, flip, { sx: r.scale });
   if (r.sign) {
     const sx = r.x + (flip ? 12 : -12);
