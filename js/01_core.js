@@ -272,21 +272,39 @@ function wrap(s, max) {
   }
   if (cur) out.push(cur); return out;
 }
-function bubble(s, x, y, o) {
-  o = o || {};
-  const size = o.size || 9, lines = wrap(s, o.max || 18);
-  const wdt = Math.max.apply(null, lines.map(l => l.length)) * size + 14, hgt = lines.length * (size + 4) + 8;
-  let bx = clamp(x - wdt / 2, 4, W - wdt - 4), by = Math.max(4, y - hgt - 9);
-  if (o.shake) { bx += rnd(-o.shake, o.shake); by += rnd(-o.shake, o.shake); }
-  const tx = clamp(x, bx + 9, bx + wdt - 9), bg = o.bg || '#fff', fg = o.color || '#16161d';
-  OV.push(c => {
-    c.fillStyle = '#16161d'; c.fillRect(bx - 2, by - 2, wdt + 4, hgt + 4);
-    c.beginPath(); c.moveTo(tx - 7, by + hgt + 1); c.lineTo(tx + 7, by + hgt + 1); c.lineTo(tx, by + hgt + 10); c.fill();
-    c.fillStyle = bg; c.fillRect(bx, by, wdt, hgt);
-    c.beginPath(); c.moveTo(tx - 4, by + hgt - 1); c.lineTo(tx + 4, by + hgt - 1); c.lineTo(tx, by + hgt + 6); c.fill();
-    c.font = size + 'px PS2P,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = fg;
-    lines.forEach((l, i) => c.fillText(l, bx + wdt / 2, by + 5 + (size + 4) * (i + .5)));
-  });
+// Реплики сначала копятся, потом раскладываются разом: важные первыми, остальные сдвигаются
+// вверх, чтобы не перекрывать друг друга. Если места нет, реплика кролика просто не показывается.
+const BUBS = [];
+function bubble(s, x, y, o) { BUBS.push({ s, x, y, o: o || {} }); }
+function flushBubbles(px) {
+  BUBS.sort((a, b) => ((b.o.prio || 0) - (a.o.prio || 0)) || (Math.abs(a.x - px) - Math.abs(b.x - px)));
+  const placed = []; let small = 0;
+  for (const B of BUBS) {
+    const o = B.o, size = o.size || 9, lines = wrap(B.s, o.max || 18), low = (o.prio || 0) <= 1;
+    const wdt = Math.max.apply(null, lines.map(l => l.length)) * size + 14, hgt = lines.length * (size + 4) + 8;
+    let bx = clamp(B.x - wdt / 2, 4, W - wdt - 4), by = Math.max(4, B.y - hgt - 9), ok = false;
+    if (low && small >= 3) continue;
+    for (let k = 0; k < 7; k++) {
+      const hit = placed.find(p => bx < p[0] + p[2] + 6 && bx + wdt + 6 > p[0] && by < p[1] + p[3] + 6 && by + hgt + 6 > p[1]);
+      if (!hit) { ok = true; break; }
+      by = hit[1] - hgt - 12;
+      if (by < 40) break;
+    }
+    if (!ok) { if (low || (o.prio || 0) < 4) continue; by = Math.max(4, B.y - hgt - 9); }
+    placed.push([bx, by, wdt, hgt]); if (low) small++;
+    const tipY = Math.max(by + hgt + 10, B.y + 1);
+    if (o.shake) { bx += rnd(-o.shake, o.shake); by += rnd(-o.shake, o.shake); }
+    const tx = clamp(B.x, bx + 9, bx + wdt - 9), bg = o.bg || '#fff', fg = o.color || '#16161d';
+    OV.push(c => {
+      c.fillStyle = '#16161d'; c.fillRect(bx - 2, by - 2, wdt + 4, hgt + 4);
+      c.beginPath(); c.moveTo(tx - 7, by + hgt + 1); c.lineTo(tx + 7, by + hgt + 1); c.lineTo(tx, tipY); c.fill();
+      c.fillStyle = bg; c.fillRect(bx, by, wdt, hgt);
+      c.beginPath(); c.moveTo(tx - 4, by + hgt - 1); c.lineTo(tx + 4, by + hgt - 1); c.lineTo(tx, tipY - 5); c.fill();
+      c.font = size + 'px PS2P,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = fg;
+      lines.forEach((l, i) => c.fillText(l, bx + wdt / 2, by + 5 + (size + 4) * (i + .5)));
+    });
+  }
+  BUBS.length = 0;
 }
 
 // ---------- sprites ----------
@@ -308,6 +326,7 @@ const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.r
 // generated art -------------------------------------------------------
 const BLOOD = ['#d81b2a', '#b3101f', '#8e0f1c', '#ff3b4b', '#c2121f'];
 const CASE_COL = [['#9a5a2c', '#6e3d1c', '#c98445'], ['#b02a35', '#7c1a25', '#e0525c'], ['#2f6fa8', '#1f4a74', '#58a0d8'], ['#4d8a4a', '#2f5c30', '#7fbf6d'], ['#7a4fa0', '#50306e', '#a67fd0']];
+let rabHalves = [];
 let caseSpr = [], rabChunks = [], bossChunks = [], pats = {};
 function makeCase(ci, open) {
   const [c, x] = mkCanvas(32, 36), col = CASE_COL[ci], O = '#1a1016';
@@ -364,7 +383,7 @@ function buildArt() {
   [bgA, x] = mkCanvas(W, H); x.drawImage(bg1, 0, 0); x.fillStyle = 'rgba(6,8,26,.5)'; x.fillRect(0, 0, W, H);
   [bgB, x] = mkCanvas(W, H); x.translate(W, 0); x.scale(-1, 1); x.drawImage(bgA, 0, 0);
   for (let i = 0; i < CASE_COL.length; i++) caseSpr.push([makeCase(i, false), makeCase(i, true)]);
-  rabChunks = makeChunks('r_sit', 2, 2);
+  rabChunks = makeChunks('r_sit', 2, 2); rabHalves = makeChunks('r_sit', 1, 2);
   bossChunks = makeChunks('b_cry', 3, 3);
   // tiling patterns
   [c, x] = mkCanvas(16, 6); x.fillStyle = '#e9b616'; x.fillRect(0, 0, 16, 6); x.fillStyle = '#17171f';

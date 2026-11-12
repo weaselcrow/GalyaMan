@@ -3,7 +3,7 @@ let scene = 'load', sceneT = 0;
 let L = null, cam = 0, camR = 0, look = 0;
 let mode = 'play', modeT = 0;
 let hitstop = 0, shake = 0, slow = 1, flash = 0, fade = 0, fadeDir = 0, fadeCb = null;
-let souls = [], tk = null;
+let souls = [], tk = null, talkCd = 0, pools = [];
 let parts = [], gibs = [], stains = [], splats = [], lens = [], floats = [], pickups = [], fxs = [];
 let stats = null, memorial = [];
 let chain = 0, chainT = 0, pendingCele = false, cele = { t: 0, title: '', n: 3 };
@@ -183,9 +183,36 @@ function lensSplat(n, big) {
   for (let i = 0; i < n; i++) lens.push({ x: rnd(30, W - 30), y: rnd(20, H * .7), r: rnd(big ? 14 : 5, big ? 40 : 16), t: 0, max: rnd(2.2, big ? 6 : 3.6), drip: rnd(20, 90), n: rint(2, 4), sd: rnd(100) });
   if (lens.length > 40) lens.splice(0, lens.length - 40);
 }
-function gore(x, y, dir, scale, big) {
+function addPool(x, y, scale) {
+  // лужа крови растекается по ближайшей поверхности под кроликом
+  for (let yy = y - 6; yy < y + 300; yy += 6) { const s = solidAt(x, yy); if (s) { if (!s.hid || L.boss) pools.push({ x, y: s.hid ? L.fy : s.y, w: 4, max: rnd(34, 70) * scale, x0: s.hid ? 10 : s.x, x1: s.hid ? W - 10 : s.x + s.w }); break; } }
+  if (pools.length > 60) pools.shift();
+}
+function gore(x, y, dir, scale, big, fin) {
   scale = scale || 1;
-  const n = big ? 300 : Math.round(34 * scale + 22);
+  const n = big ? 300 : Math.round(60 * scale + 34);
+  const G = (o) => gibs.push(Object.assign({ rot: rnd(6.28), vr: rnd(-12, 12), sc: scale, rest: false, life: 18, tr: 0 }, o));
+  if (!big) {
+    // кишки, кости и потроха летят при любом добивании
+    for (let i = 0; i < 3; i++) G({ k: 'gut', x, y, vx: rnd(-200, 200) + dir * 70, vy: -rnd(180, 420), len: rint(5, 8), ph: rnd(6) });
+    for (let i = 0; i < 3; i++) G({ k: 'bone', x, y, vx: rnd(-230, 230) + dir * 50, vy: -rnd(200, 460), vr: rnd(-18, 18) });
+    G({ k: 'organ', x, y, vx: rnd(-120, 120), vy: -rnd(260, 420), c: '#c2121f', beat: 1 });
+    for (let i = 0; i < 4; i++) G({ k: 'm', x, y, vx: rnd(-240, 240) + dir * 60, vy: -rnd(140, 400), sc: rnd(.8, 1.6) * scale, c: pick(['#e0525c', '#c2121f', '#f08a94']), life: 12 });
+    if (fin === 'split') {
+      // пополам: верх улетает, низ ещё бежит и фонтанирует
+      G({ k: 'c', cv: rabHalves[0], x, y: y - 10 * scale, vx: dir * rnd(120, 260), vy: -rnd(380, 520), vr: rnd(-9, 9), life: 22 });
+      gibs.push({ k: 'legs', cv: rabHalves[1], x, y: y + 20 * scale, dir, t: rnd(.7, 1.1), sc: scale, rot: 0, rest: true, life: 9, tr: 0 });
+      for (let i = 0; i < n; i++) parts.push({ k: 'b', x, y, vx: rnd(-150, 150), vy: -rnd(120, 520), s: rint(2, 3), c: pick(BLOOD), life: rnd(1.6, 3.2) });
+      return;
+    }
+    if (fin === 'flat') {
+      // в лепёшку: шкурка остаётся на полу, всё остальное брызжет в стороны
+      gibs.push({ k: 'pelt', x, y: y + 20 * scale, sc: scale, flip: dir < 0, rot: 0, rest: true, life: 40, tr: 0 });
+      for (let i = 0; i < n; i++) { const sd = Math.random() < .5 ? -1 : 1; parts.push({ k: 'b', x, y: y + 14 * scale, vx: sd * rnd(60, 520), vy: -rnd(10, 220), s: rint(2, 4), c: pick(BLOOD), life: rnd(1.6, 3.2) }); }
+      for (const sd of [-1, 1]) G({ k: 'e', r: Math.max(3, Math.round(4.4 * scale)), x: x + sd * 30 * scale, y: y + 8 * scale, vx: sd * rnd(160, 300), vy: -rnd(60, 180), rot: 0, vr: 0, life: 16 });
+      return;
+    }
+  }
   for (let i = 0; i < n; i++) {
     const a = rnd(-Math.PI, 0), sp = rnd(50, big ? 720 : 380);
     parts.push({ k: 'b', x: x + rnd(-8, 8) * scale, y: y + rnd(-10, 8) * scale, vx: Math.cos(a) * sp + dir * rnd(30, 170), vy: Math.sin(a) * sp - rnd(0, 110), s: rint(2, big ? 5 : 3), c: pick(BLOOD), life: rnd(1.6, 3.2) });
@@ -215,6 +242,13 @@ function updateFx(dt) {
   for (let i = gibs.length - 1; i >= 0; i--) {
     const q = gibs[i]; q.life -= dt;
     if (q.life <= 0 || q.y > H + 60) { gibs.splice(i, 1); continue; }
+    if (q.k === 'legs') {
+      q.t -= dt; q.x += q.dir * 150 * dt;
+      for (let j = 0; j < 3; j++) parts.push({ k: 'b', x: q.x + rnd(-5, 5), y: q.y - 22 * q.sc, vx: rnd(-90, 90), vy: -rnd(200, 460), s: rint(2, 3), c: pick(BLOOD), life: 2 });
+      if (q.t <= 0 || !groundBelow(q.x, q.y)) { for (let j = 0; j < 20; j++) parts.push({ k: 'b', x: q.x, y: q.y - 12, vx: rnd(-200, 200), vy: -rnd(60, 300), s: rint(2, 3), c: pick(BLOOD), life: 2 }); gibs.push({ k: 'c', cv: q.cv, x: q.x, y: q.y - 6, vx: q.dir * 60, vy: -160, rot: 0, vr: q.dir * 9, sc: q.sc, rest: false, life: 20, tr: 0 }); gibs.splice(gibs.indexOf(q), 1); }
+      continue;
+    }
+    if (q.k === 'pelt') continue;
     if (q.rest) { if (!groundBelow(q.x, q.y + 1)) q.rest = false; continue; }
     q.vy += 1100 * dt; q.x += q.vx * dt;
     let s = solidAt(q.x, q.y - 3); if (s && s.k !== 'p') { q.x -= q.vx * dt; q.vx *= -0.5; }
@@ -230,6 +264,7 @@ function updateFx(dt) {
   }
   for (let i = floats.length - 1; i >= 0; i--) { const f = floats[i]; f.t += dt; f.y += f.vy * dt; if (f.t > f.max) floats.splice(i, 1); }
   for (let i = lens.length - 1; i >= 0; i--) { const l = lens[i]; l.t += dt; if (l.t > l.max) lens.splice(i, 1); }
+  for (const p of pools) if (p.w < p.max) p.w += 26 * dt;
   for (const s of splats) for (const d of s.dr) if (d.len < d.max) d.len += d.sp * dt;
   for (let i = souls.length - 1; i >= 0; i--) { const o = souls[i]; o.t += dt; o.y -= 24 * dt; if (o.t > 3.4) souls.splice(i, 1); }
   for (let i = fxs.length - 1; i >= 0; i--) { fxs[i].t += dt; if (fxs[i].t > fxs[i].max) fxs.splice(i, 1); }
@@ -263,8 +298,9 @@ function updateFx(dt) {
 function killRabbit(r, dir) {
   r.dead = true; stats.kills++;
   const cx = r.x, cy = r.y - 20 * r.scale;
-  gore(cx, cy, dir, r.scale);
-  wallSplat(cx, cy - 6);
+  gore(cx, cy, dir, r.scale, false, r.fin || 'burst');
+  wallSplat(cx, cy - 6); if (r.fin === 'launch') wallSplat(cx, cy - 40);
+  addPool(cx, r.fin === 'launch' ? r.y + 260 : r.y, r.scale);
   if (Math.random() < .45) lensSplat(rint(1, 2));
   shake = Math.max(shake, 7); sfx.splat();
   pickups.push({ k: 'hat', x: cx, y: cy, vx: rnd(-40, 40), vy: -330, t: 0, rest: false });
@@ -283,7 +319,8 @@ function killRabbit(r, dir) {
 }
 function doBark() {
   say(P, pick(['ГАВ! ГАВ!', 'ГАВ!', 'Р-Р-ГАВ!', 'ВУФ!']), .9); sfx.bark(); P.emote = 'bark'; P.emoteT = .4;
-  for (const r of L.rabbits) if (!r.dead && r.onGround && Math.abs(r.x - P.x) < 330) { r.vy = -240; r.onGround = false; if (!r.bub && Math.random() < .5) say(r, pick(['!!!', 'она лает?!', 'собака!', 'ой']), 1); }
+  let barkN = 0;
+  for (const r of L.rabbits) if (!r.dead && r.onGround && Math.abs(r.x - P.x) < 330) { r.vy = -240; r.onGround = false; if (!r.bub && barkN < 1 && Math.random() < .5 && ++barkN) say(r, pick(['!!!', 'она лает?!', 'собака!', 'ой']), 1); }
 }
 function startCelebrate() {
   pendingCele = false; mode = 'celebrate'; cele.t = 0;
@@ -294,7 +331,8 @@ function startCelebrate() {
   if (cele.kind === 'howl') { stopSong(); sfx.howl(); }
   else if (cele.kind === 'laugh') { stopSong(); sfx.maniac(); setTimeout(() => { if (mode === 'celebrate') sfx.maniac(); }, 1300); }
   else { sfx.laugh(5, 600); playSong('dance'); }
-  for (const r of L.rabbits) if (!r.dead && inView(r.x)) { r.awe = true; r.vx = 0; if (Math.random() < .75) say(r, pick(cele.kind === 'howl' ? AWE_HOWL : AWE), 2.4); }
+  let aweN = 0;
+  for (const r of L.rabbits) if (!r.dead && inView(r.x)) { r.awe = true; r.vx = 0; if (aweN < 2 && Math.random() < .6) { aweN++; say(r, pick(cele.kind === 'howl' ? AWE_HOWL : AWE), 2.4); } else r.bub = null; }
   if (boss && L.boss && !boss.dead) say(boss, cele.kind === 'howl' ? 'ОНА ЧТО, ВОЕТ?!' : cele.kind === 'dance' ? 'ПОЧЕМУ ОНА ТАНЦУЕТ?!' : pick(['ЭТО НЕ СМЕШНО!', 'ОНИ БЫЛИ МОИМИ ДРУЗЬЯМИ…']), 2.4);
 }
 function endCelebrate() {
@@ -330,19 +368,23 @@ function openCase(c, dir) {
 
 // ---------- rabbits ----------
 function updateRabbits(dt) {
+  talkCd -= dt;
   for (let i = L.rabbits.length - 1; i >= 0; i--) {
     const r = L.rabbits[i];
     if (r.dead) { L.rabbits.splice(i, 1); continue; }
     r.t += dt; r.born += dt;
     if (r.bub) { r.bub.t -= dt; if (r.bub.t <= 0) r.bub = null; }
     if (r.ko > 0) {
-      r.ko -= dt; r.x += r.koDir * 130 * dt; r.y -= 150 * dt * (r.ko > .06 ? 1 : -.4);
+      r.ko -= dt;
+      if (r.fin === 'launch') { r.x += r.koDir * 150 * dt; r.y -= 640 * dt; r.rot += 24 * dt; for (let i = 0; i < 3; i++) parts.push({ k: 'b', x: r.x + rnd(-6, 6), y: r.y - 20, vx: rnd(-60, 60), vy: rnd(0, 120), s: rint(2, 3), c: pick(BLOOD), life: 2 }); }
+      else if (r.fin === 'flat') { if (Math.random() < .5) parts.push({ k: 'b', x: r.x, y: r.y - 4, vx: (Math.random() < .5 ? -1 : 1) * rnd(120, 420), vy: -rnd(10, 120), s: rint(2, 4), c: pick(BLOOD), life: 2 }); }
+      else { r.x += r.koDir * 130 * dt; r.y -= 150 * dt * (r.ko > .06 ? 1 : -.4); }
       if (r.ko <= 0) killRabbit(r, r.koDir);
       continue;
     }
     if (!inView(r.x, 260)) continue;
     const dx = P.x - r.x, dist = Math.abs(dx), near = Math.abs(P.y - r.y) < 130;
-    if (!r.said && dist < 215 && near && r.line && mode === 'play') { r.said = true; say(r, r.line, 2.8); sfx.blip(); }
+    if (!r.said && dist < 215 && near && r.line && mode === 'play' && talkCd <= 0) { r.said = true; say(r, r.line, 2.3); sfx.blip(); talkCd = 1.2; }
     if (r.kind === 'run') {
       if (r.state === 'idle' && dist < 205 && near) { r.state = 'flee'; sfx.squeak(); }
       if (r.state === 'flee') {
@@ -360,7 +402,7 @@ function updateRabbits(dt) {
       r.face = sign(dx); r.vx = 0;
       if (r.kind === 'give') r.state = (dist < 240 && near) ? 'offer' : 'idle';
       else r.state = (dist < 150 && near) ? 'scared' : 'idle';
-      if (!r.said2 && r.said && dist < 70 && near && !r.bub) { r.said2 = true; say(r, pick(['не надо…', 'пожалуйста', 'я хороший', 'давай обсудим']), 1.4); }
+      if (!r.said2 && r.said && dist < 70 && near && !r.bub) { r.said2 = true; if (Math.random() < .4 && talkCd <= 0) say(r, pick(['не надо…', 'пожалуйста', 'я хороший', 'давай обсудим']), 1.4); }
     }
     r.vy += GRAV * dt; collide(r, dt);
     if (r.y > H + 80) { r.dead = true; }
@@ -368,8 +410,11 @@ function updateRabbits(dt) {
 }
 function hitRabbit(r, dir) {
   if (r.ko > 0 || r.dead) return;
-  r.ko = .13; r.koDir = dir; r.bub = null; hitstop = .055; sfx.bonk(); sfx.squeak();
-  say(r, pick(LAST), .5);
+  // добивание выбирается случайно: взрыв, запуск в потолок, пополам, в лепёшку
+  r.fin = window.__fin || pick(['burst', 'burst', 'launch', 'split', 'split', 'flat', 'flat']);
+  r.koMax = r.fin === 'launch' ? .42 : r.fin === 'flat' ? .24 : .13; r.rot = 0;
+  r.ko = r.koMax; r.koDir = dir; r.bub = null; hitstop = .055; sfx.bonk(); sfx.squeak();
+  if (Math.random() < .5) say(r, pick(LAST), .5);
   floater(pick(BONK), r.x + dir * 10, r.y - 56, { color: '#ffe36b', size: 14, t: .5, rot: rnd(-.3, .3), vy: -60 });
   fxs.push({ k: 'star', x: r.x, y: r.y - 22, t: 0, max: .12 });
 }
@@ -443,10 +488,15 @@ function drawEye(x, y, r, look) {
 }
 function drawGib(q) {
   const x = Math.round(q.x), y = Math.round(q.y);
+  if (q.k === 'pelt') { spr('r_ko', x, y, q.flip, { sx: q.sc * 1.7, sy: q.sc * .14 }); R(x - 16 * q.sc, y - 3, 32 * q.sc, 2, '#b3101f'); return; }
+  if (q.k === 'legs') { const hop = (gameT * 16 | 0) % 2; g.drawImage(q.cv, Math.round(x - q.cv.width * q.sc / 2), Math.round(y - q.cv.height * q.sc - hop * 2), Math.round(q.cv.width * q.sc), Math.round(q.cv.height * q.sc)); return; }
   if (q.k === 'e') { drawEye(x, y - q.r, q.r, q.rest ? Math.atan2((P.y - 50) - q.y, P.x - q.x) : gameT * 20); return; }
   g.save(); g.translate(x, y - 4); g.rotate(q.rot); g.scale(q.sc || 1, q.sc || 1);
   if (q.k === 'c') g.drawImage(q.cv, -q.cv.width / 2, -q.cv.height / 2);
   else if (q.k === 'ear') { g.fillStyle = '#16161d'; g.fillRect(-4, -9, 8, 18); g.fillStyle = '#fff'; g.fillRect(-3, -8, 6, 16); g.fillStyle = '#ff9ec4'; g.fillRect(-1, -6, 3, 11); g.fillStyle = '#d81b2a'; g.fillRect(-3, 6, 6, 3); }
+  else if (q.k === 'gut') { g.lineCap = 'round'; for (const pass of [['#7a0c18', 6], ['#f08a94', 3]]) { g.strokeStyle = pass[0]; g.lineWidth = pass[1]; g.beginPath(); for (let i = 0; i <= q.len; i++) { const px = (i - q.len / 2) * 4, py = Math.sin(i * 1.5 + q.ph) * 4; if (i) g.lineTo(px, py); else g.moveTo(px, py); } g.stroke(); } g.lineCap = 'butt'; }
+  else if (q.k === 'bone') { g.fillStyle = '#16161d'; g.fillRect(-7, -2, 14, 5); g.fillStyle = '#f4f0e0'; g.fillRect(-6, -1, 12, 3); g.fillRect(-7, -3, 3, 3); g.fillRect(-7, 1, 3, 3); g.fillRect(4, -3, 3, 3); g.fillRect(4, 1, 3, 3); }
+  else if (q.k === 'organ') { const b = q.rest ? 1 + Math.max(0, Math.sin(gameT * 9)) * .25 : 1; g.scale(b, b); g.fillStyle = '#5c0812'; g.fillRect(-5, -5, 10, 10); g.fillStyle = '#c2121f'; g.fillRect(-4, -4, 4, 5); g.fillRect(0, -4, 4, 5); g.fillRect(-3, 1, 6, 2); g.fillRect(-1, 3, 2, 1); g.fillStyle = '#ff6b78'; g.fillRect(-3, -3, 2, 2); }
   else if (q.k === 'm') { g.fillStyle = '#8e0f1c'; g.fillRect(-3, -3, 6, 6); g.fillStyle = q.c; g.fillRect(-2, -2, 4, 4); }
   else if (q.k === 'sock') { g.fillStyle = '#16161d'; g.fillRect(-3, -7, 7, 12); g.fillRect(-3, 1, 10, 6); g.fillStyle = q.c; g.fillRect(-2, -6, 5, 10); g.fillRect(-2, 2, 8, 4); g.fillStyle = '#fff'; g.fillRect(-2, -6, 5, 2); }
   g.restore();
@@ -455,9 +505,16 @@ function drawRabbit(r) {
   if (r.dead || !inView(r.x, 90)) return;
   let name = 'r_sit', ox = 0, oy = 0, flip = r.face < 0;
   if (r.ko > 0) {
-    const k = 1 - r.ko / .13;
+    const k = 1 - r.ko / r.koMax;
+    if (r.fin === 'launch') { spr('r_ko', r.x, r.y - 22 * r.scale, r.koDir < 0, { sx: r.scale, rot: r.rot }); return; }
+    if (r.fin === 'flat') {
+      const sy = Math.max(.14, 1 - k * 2.4);
+      spr('r_ko', r.x, r.y, r.koDir < 0, { sx: r.scale * (1 + (1 - sy) * .7), sy: r.scale * sy });
+      for (const sd of [-1, 1]) { const ex = r.x + sd * (10 + k * 26) * r.scale, ey = r.y - 8 * r.scale; g.strokeStyle = '#d81b2a'; g.lineWidth = 2; g.beginPath(); g.moveTo(r.x, ey); g.lineTo(ex, ey); g.stroke(); drawEye(ex, ey, Math.max(3, 4 * r.scale), gameT * 30); }
+      return;
+    }
     spr('r_ko', r.x, r.y, r.koDir < 0, { sx: r.scale });
-    if (r.ko > .07) spr('r_ko', r.x, r.y, r.koDir < 0, { sx: r.scale, img: atlasW, a: .85 });
+    if (r.ko > r.koMax - .06) spr('r_ko', r.x, r.y, r.koDir < 0, { sx: r.scale, img: atlasW, a: .85 });
     // глаза вылезают
     const hx = r.x + r.koDir * 8 * r.scale, hy = r.y - 30 * r.scale, d = (6 + k * 16) * r.scale;
     for (const s of [-1, 1]) { const ex = hx + r.koDir * d * .7 + s * 3, ey = hy - d * .5 + s * 5 * r.scale; g.strokeStyle = '#d81b2a'; g.lineWidth = 2; g.beginPath(); g.moveTo(hx, hy); g.lineTo(ex, ey); g.stroke(); drawEye(ex, ey, Math.max(3, 4 * r.scale), gameT * 30); }
@@ -477,8 +534,8 @@ function drawRabbit(r) {
   }
 }
 function drawBubbles() {
-  for (const r of L.rabbits) if (r.bub && !r.dead && inView(r.x, 20)) bubble(r.bub.s, r.x - camR, r.y - 52 * r.scale - 4, { size: 8, max: 17 });
-  if (P.bub) bubble(P.bub.s, P.x - camR, P.y - 96, { size: 10, max: 14, bg: '#ffe9ec', color: '#a3111f' });
+  for (const r of L.rabbits) if (r.bub && !r.dead && inView(r.x, 20)) bubble(r.bub.s, r.x - camR, r.y - 52 * r.scale - 4, { size: 8, max: 17, prio: 1 });
+  if (P.bub) bubble(P.bub.s, P.x - camR, P.y - (P.crouch ? 70 : 96), { prio: 4, size: 10, max: 14, bg: '#ffe9ec', color: '#a3111f' });
 }
 function drawIceCone(x, y) { spr('cone', x, y, false); }
 
@@ -488,6 +545,6 @@ function drawSouls() {
     const a = clamp(Math.min(o.t * 3, (3.4 - o.t) * 1.5), 0, 1) * .6, x = o.x + Math.sin(o.t * 3) * 6;
     spr('r_sit', x, o.y + 20, P.x < x, { img: atlasW, sx: o.sc, a: a * .5 }); spr('r_sit', x, o.y + 20, P.x < x, { sx: o.sc, a });
     g.globalAlpha = a; R(x - 9 * o.sc, o.y - 34 * o.sc, 18 * o.sc, 3, '#ffe36b'); g.globalAlpha = 1;
-    if (o.t > .3 && o.t < 3) bubble(o.s, x - camR, o.y - 38 * o.sc, { size: 8, max: 16, bg: '#eaf6ff', color: '#3a5a8a' });
+    if (o.t > .3 && o.t < 3) bubble(o.s, x - camR, o.y - 38 * o.sc, { prio: 2, size: 8, max: 16, bg: '#eaf6ff', color: '#3a5a8a' });
   }
 }

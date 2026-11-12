@@ -195,7 +195,7 @@ function drawIce() {
   const bob = (ice.t * 9 | 0) % 2;
   drawCase({ x: ice.x - 49, y: L.fy - 44 - bob, ci: 1, scale: .62, open: false, bump: 0 });
   spr(ice.waveT > 0 ? 'ice2' : 'ice1', ice.x, L.fy + 1 - bob, false);
-  if (ice.bub) bubble(ice.bub.s, ice.x - 24 - camR, L.fy - 128, { size: 9 });
+  if (ice.bub) bubble(ice.bub.s, ice.x - 24 - camR, L.fy - 128, { size: 9, prio: 5 });
 }
 
 // ---------- Тихон на мотоцикле ----------
@@ -242,7 +242,7 @@ function drawTikhon() {
   else { name = k.t < .4 ? 't_ride' : (k.t / .2 | 0) % 2 ? 't_cry1' : 't_cry2'; oy = (k.t * 14 | 0) % 2; }
   spr(name, k.x, L.fy + 2 - oy, k.dir < 0);
   if (k.money && !k.money.done) { const q = k.money.t / .6; spr('money', k.money.x0 + (P.x - k.money.x0) * q, L.fy - 70 - Math.sin(q * Math.PI) * 60, false, { rot: q * 9 }); }
-  if (k.bub) bubble(k.bub.s, k.x - camR, L.fy - 112, { size: k.ph === 4 ? 12 : 9, max: 16, shake: k.ph === 4 ? 2 : 0 });
+  if (k.bub) bubble(k.bub.s, k.x - camR, L.fy - 112, { prio: 5, size: k.ph === 4 ? 12 : 9, max: 16, shake: k.ph === 4 ? 2 : 0 });
 }
 
 // ---------- босс: Пушистик ----------
@@ -257,7 +257,7 @@ const OFFER = ['ЭТО ТЕБЕ…', 'РОМАШКИ. ТВОИ ЛЮБИМЫЕ?',
 const MERCY = ['ГАЛЯ НЕ ЗНАЕТ ЭТОГО СЛОВА', 'КНОПКА ДЛЯ КРАСОТЫ', 'ХА. НЕТ.', 'ПОЩАДА ЗАКОНЧИЛАСЬ', 'КНОПКА СЛОМАЛАСЬ'];
 function startBoss() {
   L = buildBossLevel(); cam = 0; look = 0;
-  parts = []; gibs = []; stains = []; splats = []; pickups = []; tears = []; puddles = []; floats = []; fxs = [];
+  parts = []; gibs = []; stains = []; splats = []; pickups = []; tears = []; puddles = []; floats = []; fxs = []; pools = []; souls = [];
   Object.assign(P, { x: 70, y: FYB, vx: 0, vy: 0, hp: P.maxhp, face: 1, inv: 0, hurtT: 0, atk: 0, onGround: true, idleT: 0, bub: null, masked: 0, crouch: false, h: 76, idleAnim: '', safeX: 70, safeY: FYB });
   boss = { x: 610, y: FYB, hp: 20, max: 20, state: 'greet', t: 0, phase: 1, face: -1, inv: 0, fl: 0, bub: null, line: 0, sline: 0, hopFrom: 0, hopTo: 0, hopT: 0, hops: 0, dead: false, rainT: 0, grief: 0, started: false, mercy: 0, mercyGone: 0, waveT: 0, card: 0, scale: 1 };
   mode = 'play'; modeT = 0; scene = 'play'; chain = 0; pendingCele = false; ice = null; iceSeen = true; stopSong();
@@ -401,7 +401,7 @@ function drawBoss() {
     spr(name, b.x + ox, b.y + oy, flip, { sx: bsx, sy: bsy });
     if (b.fl > 0.08) spr(name, b.x + ox, b.y + oy, flip, { img: atlasW, a: .8 });
     if (b.state === 'dying' && (modeT * 12 | 0) % 2) spr(name, b.x + ox, b.y + oy, flip, { img: atlasW, a: Math.min(.9, modeT * .35) });
-    if (b.bub) bubble(b.bub.s, b.x, b.y - 150, { size: b.state === 'hurt' || b.grief > 0 ? 12 : 10, max: 16, shake: b.state === 'hurt' || b.state === 'cry' ? 2 : 0, color: b.state === 'hurt' ? '#a3111f' : '#16161d' });
+    if (b.bub) bubble(b.bub.s, b.x, b.y - 150, { prio: 5, size: b.state === 'hurt' || b.grief > 0 ? 12 : 10, max: 16, shake: b.state === 'hurt' || b.state === 'cry' ? 2 : 0, color: b.state === 'hurt' ? '#a3111f' : '#16161d' });
     if (b.card > 0) { const cx = b.x + b.face * 84, cy = b.y - 120 + Math.sin(gameT * 3) * 3; R(cx - 44, cy - 22, 88, 44, '#16161d'); R(cx - 42, cy - 20, 84, 40, '#fff6e0'); spr('heart_s', cx, cy - 2, false); T('ГАЛЕ ОТ', cx, cy + 5, { size: 7, color: '#a3111f' }); T('ПУШИСТИКА', cx, cy + 14, { size: 7, color: '#a3111f' }); }
   }
   for (const t of tears) { const x = Math.round(t.x), y = Math.round(t.y); g.fillStyle = '#16161d'; g.beginPath(); g.moveTo(x, y - 13); g.lineTo(x + 7, y - 2); g.arc(x, y - 2, 7, 0, Math.PI); g.lineTo(x, y - 13); g.fill(); g.fillStyle = '#6fc8ff'; g.beginPath(); g.moveTo(x, y - 10); g.lineTo(x + 5, y - 2); g.arc(x, y - 2, 5, 0, Math.PI); g.lineTo(x, y - 10); g.fill(); R(x - 2, y - 4, 2, 3, '#e6f8ff'); }
@@ -435,7 +435,7 @@ function newGame() {
   memorial = []; parts = []; gibs = []; stains = []; splats = []; lens = []; floats = []; pickups = []; fxs = []; tears = []; puddles = [];
   chain = 0; chainT = 0; pendingCele = false; ice = null; iceSeen = false; boss = null; banner = null; letterT = 0; walker = null; walkerT = 10; fallCase = false;
   hitstop = 0; shake = 0; slow = 1; paused = false;
-  L = LEVELS[curLevel].build(); stats.casesTotal = L.casesTotal || 0; souls = []; tk = null;
+  L = LEVELS[curLevel].build(); stats.casesTotal = L.casesTotal || 0; souls = []; tk = null; pools = [];
   if (L.pot) pickups.push({ k: 'pot', x: L.pot.x, y: L.pot.y, vx: 0, vy: 0, t: 1, rest: true });
   Object.assign(P, { x: 90, y: FY, vx: 0, vy: 0, face: 1, hp: 5, inv: 0, hurtT: 0, atk: 0, onGround: true, ground: null, idleT: 0, bub: null, masked: 0, crouch: false, h: 76, idleAnim: '', safeX: 90, safeY: FY, emoteT: 0 });
   cam = 0; look = 0; mode = 'play'; modeT = 0;
@@ -517,6 +517,7 @@ function drawPlay() {
   }
   for (const s of L.solids) if (s.x + s.w > cx - 4 && s.x < cx + W + 4) drawSolid(s);
   if (!L.boss) { for (const sp of L.spikes) drawSpikes(sp.x, sp.y, sp.w); for (const z of L.zaps) if (inView(z.x)) drawZap(z); }
+  for (const p of pools) { const a = Math.max(p.x0, p.x - p.w / 2), b = Math.min(p.x1, p.x + p.w / 2); if (b > cx - 10 && a < cx + W + 10) { R(a, p.y, b - a, 3, '#8e0f1c'); R(a + 2, p.y, Math.max(0, b - a - 4), 1, '#d81b2a'); } }
   for (const s of stains) if (s.x > cx - 10 && s.x < cx + W + 10) R(s.x, s.y, s.w, s.h, s.c);
   for (const c of L.cases) if (inView(c.x)) drawCase(c);
   for (const p of pickups) {
@@ -629,6 +630,7 @@ function render() {
   else if (scene === 'bossintro') drawBossIntro();
   else if (scene === 'ending') drawEnding();
   if (paused) { OV.push(c => { c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, H); }); T('ПАУЗА', W / 2, H / 2, { size: 24 }); }
+  flushBubbles(scene === 'play' ? P.x - camR : W / 2);
   // blit low-res world, then crisp overlay
   const sx = shake > .3 ? rnd(-shake, shake) : 0, sy = shake > .3 ? rnd(-shake, shake) * .7 : 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
