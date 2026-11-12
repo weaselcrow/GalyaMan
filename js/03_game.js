@@ -521,7 +521,7 @@ function drawEnding() {
     if (t > .6) T('ГАЛЯ ПОБЕДИЛА.', W / 2, 70, { size: 26, color: '#fff' });
     if (t > 2.6) T('Довольна?', W / 2, 108, { size: 14, color: '#ff8a94' });
     const mm = (stats.time / 60 | 0) + ':' + String(stats.time % 60 | 0).padStart(2, '0');
-    const rows = [['ШАПОК', stats.hats], ['ЧЕМОДАНОВ', stats.cases + '/' + stats.casesTotal], ['МОРКОВОК ОТОБРАНО', stats.carrots], ['ЛУЧШЕЕ КОМБО', 'x' + stats.best], ['КРОЛИКОВ ВЫЖИЛО', stats.l1left ? stats.l1left + ' (ОНИ ВСЁ ВИДЕЛИ)' : 'НИ ОДНОГО'], ['ВРЕМЯ', mm]].concat(story ? [['ОЧКИ', fmt(story.score)], ['ТИХОН', story.tikGot + '/3 (+' + story.tikGot * 3 + ' МЛН)']] : []);
+    const rows = [['ШАПОК', stats.hats], ['ЧЕМОДАНОВ', stats.cases + '/' + stats.casesTotal], ['МОРКОВОК ОТОБРАНО', stats.carrots], ['ЛУЧШЕЕ КОМБО', 'x' + stats.best], ['КРОЛИКОВ ВЫЖИЛО', stats.l1left ? stats.l1left + ' (ОНИ ВСЁ ВИДЕЛИ)' : 'НИ ОДНОГО'], ['ВРЕМЯ', mm]].concat(story ? [['ОЧКИ', fmt(story.score)], ['ТИХОН', story.tikGot + ' раз (+' + fmt(story.tikGot * 3000) + ')']] : []);
     rows.forEach((r, i) => { if (t > 4.4 + i * .5) { const y0 = story ? 136 : 152, st = story ? 21 : 24; T(r[0], W / 2 - 14, y0 + i * st, { size: 10, color: '#8f9ad0', align: 'right' }); T(String(r[1]), W / 2 + 14, y0 + i * st, { size: 10, color: '#ffe36b', align: 'left' }); } });
     if (t > 8) T('РАНГ: ' + rankOf(), W / 2, 316, { size: 14, color: '#3ddc6a', stroke: '#16161d', sw: 5 });
     if (t > 9 && (t * 2 | 0) % 2) T(TOUCH ? 'ТАПНИ — ТИТРЫ' : 'ENTER — ТИТРЫ', W / 2, 360, { size: 10, color: '#fff' });
@@ -557,7 +557,7 @@ function render() {
   else if (scene === 'bossintro') drawBossIntro();
   else if (scene === 'ending') drawEnding();
   else storyScene();
-  if (paused) { OV.push(c => { c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, H); }); T('ПАУЗА', W / 2, H / 2, { size: 24 }); }
+  if (paused) drawPause();
   // blit low-res world, then crisp overlay
   const sx = shake > .3 ? rnd(-shake, shake) : 0, sy = shake > .3 ? rnd(-shake, shake) * .7 : 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
@@ -607,12 +607,12 @@ function frame(ts) {
   requestAnimationFrame(frame);
   const now = ts / 1000; let dt = Math.min(.1, now - lastTs); lastTs = now; if (!(dt > 0)) dt = STEP;
   if (hit('M')) { toggleMute(); pressed.M = false; }
-  if (hit('P')) { if (scene === 'play') paused = !paused; pressed.P = false; }
+  if (hit('P')) { if (paused) paused = false; else if (scene === 'play' || scene === 'smap') pauseOpen(); pressed.P = false; }
   if (!paused) {
     acc += dt; let n = 0;
     while (acc >= STEP && n < 5) { step(STEP); acc -= STEP; n++; for (const k in pressed) pressed[k] = false; anyPress = false; }
     if (n === 5) acc = 0;
-  } else { for (const k in pressed) pressed[k] = false; anyPress = false; }
+  } else { pauseStep(); for (const k in pressed) pressed[k] = false; anyPress = false; }
   render(); musicTick();
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden && scene === 'play' && mode === 'play') paused = true; });

@@ -30,6 +30,8 @@ body.touch #pad{display:block}
   width:34px;height:34px;border-radius:8px;border:2px solid rgba(255,255,255,.35);background:rgba(20,26,54,.4);
   color:#fff;font-size:9px;display:none;align-items:center;justify-content:center;z-index:6}
 body.touch #bm{display:flex}
+#bp{position:fixed;top:calc(6px + env(safe-area-inset-top));right:calc(46px + env(safe-area-inset-right));width:40px;height:34px;border-radius:8px;border:2px solid rgba(255,255,255,.35);background:rgba(20,26,54,.4);color:#fff;font-size:8px;display:none;align-items:center;justify-content:center;z-index:6}
+body.touch #bp{display:flex}
 #rot{position:fixed;left:0;right:0;bottom:calc(120px + env(safe-area-inset-bottom));text-align:center;
   font-size:8px;line-height:1.8;color:#8f9ad0;display:none;padding:0 16px}
 @media (orientation:portrait){
@@ -48,6 +50,7 @@ body.touch #bm{display:flex}
   <div class="tb" id="bj">ПРЫГ</div>
 </div>
 <div id="bm">ЗВУК</div>
+<div id="bp">МЕНЮ</div>
 <script>window.__ASSETS=__ASSETS__;</script>
 <script>
 __GAME__

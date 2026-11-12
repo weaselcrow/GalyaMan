@@ -257,15 +257,15 @@ function drawShots() {
   }
 }
 
-// ---------- Тихон: +3 000 000 ----------
+// ---------- Тихон: +3 000 ----------
 function updateTikhon(dt) {
   const t = tik; if (!t || t.st === 3) return; t.t += dt; if (t.bub) { t.bub.t -= dt; if (t.bub.t <= 0) t.bub = null; }
   if (t.st === 0) {
     if (Math.abs(P.x - t.x) < 150 && Math.abs(P.y - t.y) < 120 && !t.hi) { t.hi = true; say(t, 'Я ТИХОН.', 1.6); sfx.blip2(); }
     if (Math.abs(P.x - t.x) < 30 && Math.abs(P.y - t.y) < 60 && mode === 'play') {
-      t.st = 1; t.t = 0; story.tikGot++; story.score += 3000000; sfx.coins(); sfx.heal(); shake = Math.max(shake, 6); flash = Math.max(flash, .12);
+      t.st = 1; t.t = 0; story.tikGot++; story.score += 3000; sfx.coins(); sfx.heal(); shake = Math.max(shake, 6); flash = Math.max(flash, .12);
       say(t, 'Я ТИХОН. ДЕРЖИ ДЕНЕГ!', 2.2);
-      floater('+3 000 000', t.x, t.y - 110, { color: '#ffe36b', size: 20, t: 2.4, vy: -16, stroke: '#16161d' });
+      floater('+3 000', t.x, t.y - 110, { color: '#ffe36b', size: 20, t: 2.4, vy: -16, stroke: '#16161d' });
       floater('ТИХОН ДАЛ ДЕНЕГ', t.x, t.y - 84, { color: '#fff', size: 9, t: 2.4, vy: -16 });
       for (let i = 0; i < 46; i++) parts.push({ k: 'p', x: t.x + rnd(-8, 8), y: t.y - 50, vx: rnd(-220, 220), vy: -rnd(120, 460), s: rint(2, 4), c: pick(['#ffe36b', '#f3c93a', '#fff7c2']), life: rnd(.8, 1.8), g: 700 });
     }

@@ -148,3 +148,52 @@ function stepMap(dt, go) {
   if (hit('T') && sceneT > .3) { if (tapY > H - 64 && tapX < 300) swap(); else NODES.forEach((n, i) => { if (Math.abs(tapX - n[0]) < 60 && Math.abs(tapY - n[1]) < 50) { if (i === story.pos) ok = mapT >= 1; else if (nodeOpen(i)) { mapFrom = story.pos; story.pos = i; mapT = 0; sfx.select(); } else sfx.buzz(); } }); }
   if (ok && !fadeDir) { sfx.ok(); story.i = story.pos; fadeTo(() => { scene = 'sintro'; sceneT = 0; stopSong(); }); }
 }
+
+// ---------- меню паузы: статистика, управление, герои, враги ----------
+let pmI = 0;
+function pauseItems() { return ['ПРОДОЛЖИТЬ', 'СТАТИСТИКА', 'УПРАВЛЕНИЕ', 'ГЕРОИ', 'ВРАГИ', 'ЗВУК: ' + (muted ? 'ВЫКЛ' : 'ВКЛ'), story && scene === 'play' ? 'НА КАРТУ' : 'В ГЛАВНОЕ МЕНЮ']; }
+function pauseOpen() { paused = true; pmI = 0; sfx.select(); }
+function pauseStep() {
+  const items = pauseItems(), n = items.length;
+  if (hit('J')) { pmI = (pmI + n - 1) % n; sfx.select(); } if (hit('D')) { pmI = (pmI + 1) % n; sfx.select(); }
+  let ok = hit('S') || hit('A');
+  if (hit('T')) { for (let i = 0; i < n; i++) if (tapX > 40 && tapX < 300 && Math.abs(tapY - (128 + i * 34)) < 16) { if (pmI === i) ok = true; pmI = i; sfx.select(); } }
+  if (!ok) return;
+  if (pmI === 0) { paused = false; sfx.ok(); }
+  else if (pmI === 5) toggleMute();
+  else if (pmI === 6) {
+    paused = false; sfx.ok();
+    if (story && scene === 'play') { saveStory(); fadeTo(() => { stopSong(); gotoMap(story.i); }); }
+    else fadeTo(() => { if (story) saveStory(); credits = null; story = null; resetHero(); stopSong(); scene = 'title'; sceneT = 0; newGame(); });
+  } else sfx.blip();
+}
+function pauseRows() {
+  const st = stats || {}, mm = ((st.time || 0) / 60 | 0) + ':' + String((st.time || 0) % 60 | 0).padStart(2, '0'), inStory = !!story;
+  switch (pmI) {
+    case 0: return { title: inStory ? (scene === 'smap' ? 'КАРТА ПОХОДА' : STAGES[story.i].name) : 'КЛАССИКА: СЕЗОН ШАПОК', rows: [['ГЕРОЙ', inStory ? HEROES[story.ch].name : 'ГАЛЯ'], ['СЕРДЦА', P.hp + ' / ' + P.maxhp]].concat(inStory ? [['ОЧКИ', fmt(story.score)], ['ЭТАПОВ ПРОЙДЕНО', story.beaten.filter(Boolean).length + ' / 3']] : [['ШАПОК', st.hats || 0]]), note: 'игра на паузе' };
+    case 1: return { title: 'СТАТИСТИКА', rows: (inStory ? [['ОЧКИ', fmt(story.score)], ['РЕКОРД', fmt(Math.max(story.best || 0, story.score))], ['ЭТАПЫ', story.beaten.filter(Boolean).length + ' / 3'], ['ТИХОН НАЙДЕН', story.tikGot + ' раз (+' + fmt(story.tikGot * 3000) + ')']] : []).concat([['ШАПОК', st.hats || 0], ['КРОЛИКОВ', st.kills || 0], ['ЛУЧШЕЕ КОМБО', 'x' + (st.best || 0)], ['ЧЕМОДАНОВ', (st.cases || 0) + ' / ' + (st.casesTotal || 0)], ['ПРОПУЩЕНО УДАРОВ', st.hits || 0], ['ГАЛЯ ПАЛА', (st.deaths || 0) + ' раз'], ['ВРЕМЯ', mm], ['РАНГ', stats ? rankOf() : '—']]) };
+    case 2: return { title: 'УПРАВЛЕНИЕ', rows: TOUCH ? [['◀ ▶', 'бег'], ['ПРЫГ', 'прыжок'], ['БИТЬ', 'удар'], ['РЫВОК', 'неуязвимость'], ['ЗВУК', 'вкл / выкл']] : [['← →  /  A D', 'бег'], ['ПРОБЕЛ / Z / ↑', 'прыжок'], ['X / J', 'удар'], ['C / SHIFT / L', 'рывок'], ['↓ / S', 'лай (дворняга)'], ['P / ESC', 'это меню'], ['M', 'звук']], note: 'держи прыжок дольше — прыгнешь выше' };
+    case 3: return { title: 'ГЕРОИ', rows: [['ГАЛЯ', '5 сердец'], ['', 'сковородка: бьёт далеко'], ['', 'рывок: 0,8 с'], [inStory && story.dog ? 'ДВОРНЯГА' : '? ? ?', inStory && story.dog ? '4 сердца' : 'пройди Деревню'], ['', inStory && story.dog ? 'быстрая, двойной прыжок' : ''], ['', inStory && story.dog ? 'лай оглушает и сбивает снаряды' : ''], ['', inStory && story.dog ? 'рывок: 0,5 с' : '']], note: inStory ? 'герой меняется на карте: ↓' : 'дворняга есть только в сюжете' };
+    case 4: return { title: 'ВРАГИ', rows: [['КУСАКА', '1 удар. прыгает на тебя'], ['МЕТАТЕЛЬ', '1 удар. морковку можно отбить'], ['ВЫШИБАЛА', '3 удара. медленный'], ['САНТА', '1 удар. снежки летят прямо'], ['ВЕДЬМАК', '2 удара. дрожит — будет выпад'], ['БОСС', 'выдохся — урон x2'], ['ТИХОН', 'не враг. +3 000 очков']], note: 'рывок проходит сквозь всё' };
+    case 5: return { title: 'ЗВУК', rows: [['СЕЙЧАС', muted ? 'выключен' : 'включён']], note: 'ENTER — переключить' };
+    default: return { title: story && scene === 'play' ? 'ВЫЙТИ НА КАРТУ' : 'ВЫЙТИ В МЕНЮ', rows: story && scene === 'play' ? [['ЭТАП', 'начнётся заново'], ['ОЧКИ', 'сохранятся']] : [['ПРОГРЕСС СЮЖЕТА', 'сохранён']], note: 'ENTER — выйти' };
+  }
+}
+function drawPause() {
+  const items = pauseItems(), d = pauseRows(), t = gameT;
+  OV.push(c => {
+    c.fillStyle = 'rgba(6,6,20,.8)'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#16161d'; c.fillRect(28, 96, 284, 262); c.fillStyle = '#10243a'; c.fillRect(32, 100, 276, 254); c.fillStyle = '#39e0d0'; c.fillRect(32, 100, 276, 3);
+    c.fillStyle = '#16161d'; c.fillRect(324, 96, 448, 300); c.fillStyle = '#1b1430'; c.fillRect(328, 100, 440, 292); c.fillStyle = '#ffe36b'; c.fillRect(328, 100, 440, 3);
+    c.fillStyle = '#ffe36b'; c.fillRect(40, 114 + pmI * 34, 260, 28);
+  });
+  T('ПАУЗА', W / 2, 52, { size: 26, color: '#ffe36b', stroke: '#16161d', sw: 7 });
+  items.forEach((s, i) => T((i === pmI && (performance.now() / 300 | 0) % 2 ? '▶ ' : '  ') + s, 52, 129 + i * 34, { size: 10, align: 'left', color: i === pmI ? '#16161d' : '#bff7ee' }));
+  T(d.title, 548, 124, { size: 13, color: '#ffe36b', stroke: '#16161d', sw: 4 });
+  const step = d.rows.length > 9 ? 19 : 22;
+  d.rows.forEach((r, i) => { const y = 156 + i * step; T(String(r[0]), 536, y, { size: 8, align: 'right', color: '#8fdcff' }); T(String(r[1]), 552, y, { size: 8, align: 'left', color: '#fff' }); });
+  if (d.note) T(d.note, 548, 378, { size: 7, color: '#8f9ad0' });
+  T(TOUCH ? 'тап — выбрать' : '↑ ↓  выбор    ENTER  ок    P  назад', W / 2, H - 24, { size: 8, color: '#8f9ad0' });
+}
+
+if (document.getElementById('bp')) document.getElementById('bp').addEventListener('pointerdown', e => { e.preventDefault(); audioInit(); press('P'); release('P'); });
