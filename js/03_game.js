@@ -630,8 +630,7 @@ function drawEnding() {
     const rows = [['ШАПОК', stats.hats], ['ЧЕМОДАНОВ', stats.cases + '/' + stats.casesTotal], ['МОРКОВОК ОТОБРАНО', stats.carrots], ['ЛУЧШЕЕ КОМБО', 'x' + stats.best], ['КРОЛИКОВ ВЫЖИЛО', stats.l1left ? stats.l1left + ' (ОНИ ВСЁ ВИДЕЛИ)' : 'НИ ОДНОГО'], ['ВРЕМЯ', mm]];
     rows.forEach((r, i) => { if (t > 4.4 + i * .5) { T(r[0], W / 2 - 14, 152 + i * 24, { size: 10, color: '#8f9ad0', align: 'right' }); T(String(r[1]), W / 2 + 14, 152 + i * 24, { size: 10, color: '#ffe36b', align: 'left' }); } });
     if (t > 8) T('РАНГ: ' + rankOf(), W / 2, 316, { size: 14, color: '#3ddc6a', stroke: '#16161d', sw: 5 });
-    if (P.masked) spr('g_mask' + ((t / .35 | 0) % 3), 90, 430 - Math.abs(Math.sin(t * 6)) * 4, false, { img: galB[3] });
-    else spr((t / .19 | 0) % 2 ? 'g_dance2' : 'g_dance1', 90, 430 - Math.abs(Math.sin(t * 16)) * 5, (t / .76 | 0) % 2 === 1, { img: galB[2] });
+    spr((t / .19 | 0) % 2 ? 'g_dance2' : 'g_dance1', 90, 430 - Math.abs(Math.sin(t * 16)) * 5, (t / .76 | 0) % 2 === 1, { img: galB[3] });
   } else {
     const y0 = H + 20 - (t - credits.t0) * 30;
     credits.rows.forEach((r, i) => { const y = y0 + r.y; if (y > -20 && y < H + 20) { if (r.b) T(r.a, W / 2 - 12, y, { size: 9, color: '#fff', align: 'right' }), T(r.b, W / 2 + 12, y, { size: 8, color: '#8f9ad0', align: 'left' }); else T(r.a, W / 2, y, { size: r.size || 10, color: r.color || '#ffe36b' }); } });
