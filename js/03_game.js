@@ -8,7 +8,7 @@ function hurtPlayer(dir, pit) {
   else { P.hurtT = .34; P.vx = dir * 175; P.vy = -280; P.onGround = false; say(P, pick(L.story ? ['АЙ!', 'ЭЙ!', 'ОЙ!', 'КУСАЮТСЯ!', 'ВОТ ГАДЫ!'] : ['АЙ!', 'ЭЙ!', 'ОЙ!', 'МОКРО!']), .7); }
 }
 function attackHits() {
-  const x0 = P.face > 0 ? P.x - 10 : P.x - 68, x1 = x0 + 78, y0 = P.y - 96, y1 = P.y + 8;
+  const rch = HR().reach, x0 = P.face > 0 ? P.x - 10 : P.x - rch + 10, x1 = x0 + rch, y0 = P.y - HR().top, y1 = P.y + 8;
   for (const r of L.rabbits) {
     if (r.dead || r.ko > 0 || P.atkSet.has(r)) continue;
     const hw = 14 * r.scale;
@@ -27,23 +27,24 @@ function updatePlayer(dt, ctrl) {
   if (P.hurtT > 0) { P.hurtT -= dt; ctrl = false; }
   // рывок: короткий бросок с неуязвимостью и перезарядкой
   P.dashCd = Math.max(0, (P.dashCd || 0) - dt);
-  if (P.onGround) P.airDash = true;
+  if (P.onGround) { P.airDash = true; P.djUsed = false; }
   if (ctrl && hit('DS') && P.dashCd <= 0 && (P.onGround || P.airDash)) {
-    P.dash = .2; P.dashCd = .8; P.dashDir = (down('L') ? -1 : down('R') ? 1 : P.face); P.face = P.dashDir; P.inv = Math.max(P.inv, .34); P.atk = 0; P.trail = [];
+    P.dash = .2; P.dashCd = HR().dcd; P.dashDir = (down('L') ? -1 : down('R') ? 1 : P.face); P.face = P.dashDir; P.inv = Math.max(P.inv, .34); P.atk = 0; P.trail = [];
     if (!P.onGround) P.airDash = false; sfx.dash(); burst(P.x, P.y - 30, 8, ['#39e0d0', '#fff', '#cfd8e6'], 120, .3, 0);
   }
   let ax = 0; if (ctrl) { if (down('L')) ax -= 1; if (down('R')) ax += 1; }
   const acc = P.onGround ? (P.slip ? 380 : 1900) : 1300;
-  if (ax) { P.vx = clamp(P.vx + ax * acc * dt, -190, 190); if (P.atk <= 0) P.face = ax; }
+  if (ax) { P.vx = clamp(P.vx + ax * acc * dt, -Math.max(HR().sp, Math.abs(P.vx)), Math.max(HR().sp, Math.abs(P.vx))); if (P.atk <= 0) P.face = ax; }
   else { const fr = (P.onGround ? (P.slip ? 200 : 2300) : 420) * dt; if (Math.abs(P.vx) <= fr) P.vx = 0; else P.vx -= sign(P.vx) * fr; }
   if (P.atk > 0 && P.onGround && !P.slip) P.vx *= Math.pow(0.002, dt);
   if (P.dash > 0) { P.dash -= dt; P.vx = P.dashDir * 540; P.vy = 0; (P.trail = P.trail || []).push({ x: P.x, y: P.y, t: .22 }); if (P.dash <= 0) P.vx = P.dashDir * 190; }
   if (P.trail) { for (const q of P.trail) q.t -= dt; while (P.trail.length && P.trail[0].t <= 0) P.trail.shift(); }
   P.coyote = P.onGround ? .1 : Math.max(0, P.coyote - dt);
   if (ctrl && hit('J')) P.jbuf = .13; else P.jbuf = Math.max(0, P.jbuf - dt);
-  if (P.jbuf > 0 && P.coyote > 0) { P.vy = -530; P.jbuf = 0; P.coyote = 0; P.onGround = false; sfx.jump(); burst(P.x, P.y, 5, ['#cfd8e6', '#8fa3c7'], 70, .3); }
-  if (ctrl && !down('J') && P.vy < -190 && P.hurtT <= 0) P.vy = -190;
-  if (ctrl && hit('A') && P.atk <= 0) { P.atk = ATK_T; P.atkSet = new Set(); sfx.swing(); }
+  if (P.jbuf > 0 && P.coyote > 0) { P.vy = -HR().jmp; P.jbuf = 0; P.coyote = 0; P.onGround = false; sfx.jump(); burst(P.x, P.y, 5, ['#cfd8e6', '#8fa3c7'], 70, .3); }
+  else if (ctrl && hit('J') && !P.onGround && HR().dj && !P.djUsed) { P.vy = -HR().jmp * .9; P.djUsed = true; P.jbuf = 0; sfx.jump(); burst(P.x, P.y, 7, ['#fff', '#ffe36b'], 100, .3); }
+  if (ctrl && !down('J') && P.vy < -190 && P.hurtT <= 0 && !(P.boost > 0)) P.vy = -190;
+  if (ctrl && hit('A') && P.atk <= 0) { P.atk = ATK_T; P.atkSet = new Set(); sfx.swing(); if (HR().lunge) P.vx = P.face * HR().lunge; }
   if (P.atk > 0) {
     const e = ATK_T - P.atk; P.atk -= dt;
     if (e >= .06 && e < .2) attackHits();
@@ -93,9 +94,10 @@ function drawPlayer() {
   else if (P.emoteT > 0 && P.emote === 'laugh') name = (P.emoteT / .1 | 0) % 2 ? 'g_laugh2' : 'g_laugh1';
   else if (P.emoteT > 0 && P.emote === 'bark') { name = 'g_idle'; oy = -3; }
   else if (P.idleT > 3.5 && mode === 'play') wig = true;
-  if (P.trail && P.trail.length && F.g_run) for (const q of P.trail) spr('g_run', q.x, q.y, flip, { img: atlasW, a: clamp(q.t * 2.2, 0, .5) });
+  if (P.trail && P.trail.length && F.g_run) for (const q of P.trail) spr(hero() === 1 && F.k_run1 ? 'k_run1' : 'g_run', q.x, q.y, flip, { img: atlasW, a: clamp(q.t * 2.2, 0, .5) });
   if (P.dash > 0) name = 'g_run';
   if (P.inv > 0 && !(P.dash > 0) && P.hurtT <= 0 && mode === 'play' && (P.inv * 18 | 0) % 2) return;
+  if (hero() === 1) { drawDog(name, oy, flip); return; }
   const lv = stats.kills >= 18 ? 3 : stats.kills >= 9 ? 2 : stats.kills >= 3 ? 1 : 0, img = galB[lv];
   if (P.bigHat) spr('hat', P.x + (flip ? -4 : 4), P.y + oy - HEADTOP[name] + 24, flip, { sx: 1.7 });
   if (wig) {
@@ -594,7 +596,7 @@ function step(dt) {
       break;
     case 'ending':
       if (!credits) { if (sceneT > 9 && go) { credits = makeCredits(); sfx.ok(); } }
-      else if ((credits.done || sceneT - credits.t0 > 8) && go && !fadeDir) fadeTo(() => { credits = null; story = null; stopSong(); scene = 'title'; sceneT = 0; newGame(); });
+      else if ((credits.done || sceneT - credits.t0 > 8) && go && !fadeDir) fadeTo(() => { credits = null; story = null; resetHero(); stopSong(); scene = 'title'; sceneT = 0; newGame(); });
       break;
     default: storyStep(dt, go);
   }
@@ -625,6 +627,6 @@ window.__dbg = {
   warp(x, y) { P.x = x; P.y = y === undefined ? FY : y; P.vx = P.vy = 0; cam = clamp(x - 360, 0, L.w - W); },
   god(v) { P.maxhp = v ? 99 : 5; P.hp = P.maxhp; },
   sim(n, f) { for (let i = 0; i < n; i++) { if (f) f(i, press, release); step(STEP); for (const k in pressed) pressed[k] = false; anyPress = false; } }, render() { render(); },
-  start() { startLevel(); }, story(i) { startStory(); story.i = i || 0; storyStartLevel(); }, sboss(i) { startStory(); story.i = i || 0; storyStartBoss(); }, get st() { return { story, sb: sb && { hp: sb.hp, st: sb.st, x: sb.x }, shots: shots.length, tik: tik && tik.st }; }, boss() { startBoss(); }, bosshp(n) { boss.hp = n; }, ending() { startEnding(); },
+  start() { startLevel(); }, story(i, ch) { startStory(); story.i = i || 0; story.ch = ch || 0; storyStartLevel(); }, sboss(i, ch) { startStory(); story.i = i || 0; story.ch = ch || 0; storyStartBoss(); }, map(o) { startStory(); Object.assign(story, o || {}); }, get st() { return { story, sb: sb && { hp: sb.hp, st: sb.st, x: sb.x }, shots: shots.length, tik: tik && tik.st }; }, boss() { startBoss(); }, bosshp(n) { boss.hp = n; }, ending() { startEnding(); },
   skip() { iceSeen = true; fallCase = true; }, L: () => L, P, songs: SONGS, n2f: N2F, audio: () => AC && { state: AC.state, song: song && song.name }
 };

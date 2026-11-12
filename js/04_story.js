@@ -46,6 +46,7 @@ function storyInit() {
     loadImg(pair[1]).then(im => { const [c, x] = mkCanvas(W, H); x.drawImage(im, 0, 0); x.fillStyle = 'rgba(8,8,24,.3)'; x.fillRect(0, 0, W, H); sbgs[i].boss = c; });
   });
   for (let i = 0; i < 3; i++) sChunks[i] = F['sb' + i + '_1'] ? makeChunks('sb' + i + '_1', 3, 3) : bossChunks;
+  if (A.smap) loadImg(A.smap).then(im => { mapImg = im; });
   for (let i = 0; i < 70; i++) snow.push({ x: rnd(W), y: rnd(H), v: rnd(20, 70), s: rint(1, 2), p: rnd(6) });
 }
 const has = n => !!F[n];
@@ -121,7 +122,7 @@ function buildStory(i) {
     mv(2010, 2060, 344, 70, 40); chk(2190); l.dancers.push({ x: 2330, v: 0 }); en(2480, FY, 'bite'); en(2560, FY, 'bite');
     pl(2640, 330, 70); pl(2740, 276, 70); pl(2840, 222, 90); l.tik = { x: 2886, y: 222 }; rb(2700, FY, 'sit', 'наверху кто-то раздаёт деньги');
     l.iceX = 2980; en(3080, FY, 'guard', 'со сковородками нельзя'); en(3200, FY, 'throw');
-    pl(3330, 350, 50); pl(3400, 320, 40);
+    pl(3300 + 118, 330, 34);
     chk(3500); l.dancers.push({ x: 3640, v: 1 }); en(3780, FY, 'bite'); zap(3900, 252, .6); zap(4060, 252, 1.9); pl(3840, 240, 280); cs(3980, 240, 'heart', 1); en(4200, FY, 'guard');
     en(4520, FY, 'throw'); en(4620, FY, 'bite'); l.dancers.push({ x: 4780, v: 0 }, { x: 4900, v: 1 }); en(5040, FY, 'guard', 'к Апельсину нельзя');
     rb(5180, FY, 'sit', 'он катается. это больно'); sg(5200, 250, 150, ['АПЕЛЬСИН →', '(VIP-ЗАЛ)']);
@@ -133,15 +134,16 @@ function buildStory(i) {
     rb(360, FY, 'sit', 'ярмарка закрыта. для Гали'); en(560, FY, 'santa', 'с новым годом!'); l.icy.push([650, 900]); en(800, FY, 'bite');
     rb(930, FY, 'give', 'глинтвейн? морковный');
     en(1240, FY, 'witch', 'хм. чудовище'); bl(1380, 346, 70, 40); en(1415, 346, 'santa'); sp(1460, 50); en(1620, FY, 'bite'); l.icy.push([1680, 2000]); en(1880, FY, 'santa');
-    mv(2110, 2170, 344, 70, 44); chk(2300); en(2430, FY, 'witch'); en(2520, FY, 'bite'); cs(2620, FY, 'matryoshka', 2);
+    chk(2300); en(2430, FY, 'witch'); en(2520, FY, 'bite'); cs(2620, FY, 'matryoshka', 2);
     pl(2700, 326, 70); pl(2800, 268, 70); pl(2900, 210, 70); pl(3010, 160, 90); l.tik = { x: 3056, y: 160 };
     l.iceX = 2760; en(3080, FY, 'santa'); zap(3140, 282, .4); pl(3080, 270, 120);
-    pl(3236, 352, 50); chk(3380); l.icy.push([3450, 3800]); en(3560, FY, 'bite'); en(3660, FY, 'witch', 'контракт на Галю: 300 орен'); en(3900, FY, 'santa');
+    pl(3232, 352, 46); chk(3380); l.icy.push([3450, 3800]); en(3560, FY, 'bite'); en(3660, FY, 'witch', 'контракт на Галю: 300 орен'); en(3900, FY, 'santa');
     bl(4000, 326, 70, 60); pl(4100, 262, 70); cs(4135, 262, 'hats', 1); en(4240, FY, 'witch');
-    pl(4390, 340, 60); en(4640, FY, 'santa'); en(4740, FY, 'bite'); en(4840, FY, 'witch'); sp(4950, 60); l.icy.push([5020, 5300]);
+    en(4640, FY, 'santa'); en(4740, FY, 'bite'); en(4840, FY, 'witch'); sp(4950, 60); l.icy.push([5020, 5300]);
     rb(5380, FY, 'sit', 'король сегодня не в духе'); sg(5400, 250, 170, ['КОРОЛЬ →', '(кланяться)']);
     [220, 1050 - 120, 1560, 2350 + 150, 3420, 4480 + 80, 5200].forEach((x, k) => l.deco.push({ x, y: FY, ci: (k + 1) % 5, s: .8 }));
   }
+  storyExtras(l, i);
   l.gateX = l.w - 100;
   l.solids.push({ x: -60, y: -300, w: 60, h: 800, k: 'b', hid: true }, { x: l.w, y: -300, w: 80, h: 800, k: 'b', hid: true });
   l.casesTotal = l.cases.length; l.rabTotal = l.rabbits.length;
@@ -149,6 +151,7 @@ function buildStory(i) {
 }
 function buildStoryArena(i) {
   const l = { w: W, fy: FYB, solids: [], rabbits: [], cases: [], signs: [], zaps: [], spikes: [], movers: [], deco: [], checks: [], pits: [], boss: true, story: true, si: i, th: TH[i], song: 'sboss', dancers: [], neon: [], icy: [], lights: [], name: STAGES[i].boss };
+  storyExtras(l, -1);
   l.bg2 = sbgs[i] && sbgs[i].boss;
   l.solids.push({ x: -200, y: FYB, w: W + 400, h: 120, k: 'f' }, { x: -60, y: -300, w: 68, h: 800, k: 'b', hid: true }, { x: W - 8, y: -300, w: 68, h: 800, k: 'b', hid: true });
   if (i === 1) l.neon.push({ x: W / 2, y: 92, s: 'ЗАНОЗА VIP', c: '#ff4fd8' });
@@ -158,12 +161,13 @@ function buildStoryArena(i) {
 
 // ---------- поток ----------
 function clearWorld() { parts = []; gibs = []; stains = []; splats = []; pickups = []; floats = []; fxs = []; tears = []; puddles = []; shots = []; warns = []; chain = 0; chainT = 0; pendingCele = false; ice = null; boss = null; sb = null; tik = null; walker = null; walkerT = 12; letterT = 0; hitstop = 0; slow = 1; }
-function startStory() { newGame(); story = { i: 0, score: 0, tikGot: 0 }; scene = 'sintro'; sceneT = 0; stopSong(); }
+function startStory() { newGame(); story = Object.assign({ i: 0, score: 0, tikGot: 0, ch: 0, pos: 0, unlock: 0 }, loadSave()); const nx = story.beaten.indexOf(0); gotoMap(nx < 0 ? 2 : nx); }
 function storyStartLevel() {
   const i = story.i; clearWorld(); iceSeen = false; fallCase = true;
   L = buildStory(i); stats.cases = 0; stats.casesTotal = L.casesTotal;
   if (L.tik) tik = { x: L.tik.x, y: L.tik.y, st: 0, t: 0, bub: null };
   Object.assign(P, { x: 90, y: FY, vx: 0, vy: 0, face: 1, hp: P.maxhp, inv: 0, hurtT: 0, atk: 0, onGround: true, ground: null, idleT: 0, bub: null, bigHat: 0, safeX: 90, safeY: FY, emoteT: 0, dash: 0, dashCd: 0 });
+  applyHero(); P.y = FY;
   cam = 0; look = 0; mode = 'play'; modeT = 0; scene = 'play'; sceneT = 0; playSong(L.song);
   banner = { s: 'ЭТАП ' + (i + 1) + ': ' + STAGES[i].name, sub: STAGES[i].sub.toUpperCase(), t: 2.8 };
 }
@@ -173,6 +177,7 @@ function storyStartBoss() {
   L = buildStoryArena(i); cam = 0; look = 0;
   Object.assign(P, { x: 70, y: FYB, vx: 0, vy: 0, hp: P.maxhp, face: 1, inv: 0, hurtT: 0, atk: 0, onGround: true, idleT: 0, bub: null, safeX: 70, safeY: FYB, dash: 0, dashCd: 0 });
   sb = { i, x: 620, y: FYB, hp: S.hp, max: S.hp, st: 'intro', t: 0, face: -1, inv: 0, fl: 0, bub: null, dead: false, n: 0, cnt: 0, vx: 0, crown: null, ph2: false, tired: false, armored: false, hot: false, h: S.h, hw: S.hw };
+  applyHero();
   mode = 'play'; modeT = 0; scene = 'play'; playSong('sboss');
   banner = { s: S.boss, sub: S.bsub.toUpperCase(), t: 2.2 };
 }
@@ -231,7 +236,7 @@ function updateShots(dt) {
       s.t += dt; if (!s.back && (s.t > .85 || s.x < 30 || s.x > W - 30)) { s.back = true; s.vx = 0; }
       if (s.back) { const dx = sb.x - s.x, dy = (sb.y - sb.h - 20) - s.y, d = Math.hypot(dx, dy) || 1; s.vx += dx / d * 900 * dt; s.vy += dy / d * 900 * dt; const v = Math.hypot(s.vx, s.vy), mx = sb.ph2 ? 380 : 320; if (v > mx) { s.vx *= mx / v; s.vy *= mx / v; } if (d < 30 && s.t > 1) { dead = true; sb.crown = null; if (!sb.dead) { sfx.ding(); if (sb.st === 'bare') bset('idle'); } } }
       dead = dead && s.back;
-    } else if (s.k !== 'wave' && s.k !== 'beam') { const q = solidAt(s.x, s.y); if (q && !(q.k === 'p')) { dead = true; burst(s.x, s.y, 6, s.k === 'snow' ? ['#fff', '#cfe8ff'] : s.k === 'fire' ? ['#ffb347', '#ff5b3b'] : ['#ffa033', '#7fbf6d'], 110, .35); if (s.k === 'gift') { sfx.thud(); shake = Math.max(shake, 3); } } }
+    } else if (s.k !== 'wave' && s.k !== 'beam') { const q = solidAt(s.x, s.y); if (q && !(q.k === 'p')) { dead = true; burst(s.x, s.y, 6, s.k === 'snow' || s.k === 'ici' ? ['#fff', '#cfe8ff'] : s.k === 'roll' ? [L.th.boxHi, L.th.box, '#fff'] : s.k === 'fire' ? ['#ffb347', '#ff5b3b'] : ['#ffa033', '#7fbf6d'], 110, .35); if (s.k === 'gift') { sfx.thud(); shake = Math.max(shake, 3); } } }
     if (!dead && mode === 'play' && Math.abs(s.x - P.x) < s.r + 9 && s.y > P.y - P.h + 6 && s.y - s.r < P.y) { hurtPlayer(sign(P.x - s.x || 1)); if (s.k !== 'wave' && s.k !== 'crown' && P.inv > 0 && !(P.dash > 0)) dead = true; }
     if (dead) shots.splice(i, 1);
   }
@@ -360,7 +365,7 @@ function drawStoryBoss() {
 
 // ---------- обновление и отрисовка ----------
 function storyUpdate(dt) {
-  updateShots(dt); updateTikhon(dt); if (L.boss) updateStoryBoss(dt);
+  updateExtras(dt); updateShots(dt); updateTikhon(dt); if (L.boss) updateStoryBoss(dt);
   for (const z of L.icy) if (P.onGround && P.x > z[0] && P.x < z[1]) P.slip = true;
 }
 function storyMode(dt) { // режимы, которых нет в классике: победа над боссом
@@ -376,10 +381,10 @@ function storyMode(dt) { // режимы, которых нет в класси�
       for (const r of L.rabbits) say(r, pick(['…', 'мамочки', 'нам конец']), 2.5);
     }
   } else if (modeT > 4.4 && !b.won) { b.won = true; playSong('win'); }
-  if (b.won && modeT > 7.6 && !fadeDir) { if (story.i < 2) fadeTo(() => { story.i++; scene = 'sintro'; sceneT = 0; stopSong(); }); else fadeTo(startEnding); }
+  if (b.won && modeT > 7.6 && !fadeDir) { storyWin(); }
 }
 function storyDrawBack() {
-  const t = gameT;
+  const t = gameT; drawExtras();
   for (const n of L.neon) { if (!inView(n.x, 260) && !L.boss) continue; const on = Math.sin(t * 7 + n.x) > -.9, w = n.s.length * 15 + 24; R(n.x - w / 2 - 3, n.y - 17, w + 6, 34, '#16161d'); R(n.x - w / 2, n.y - 14, w, 28, '#0d0820'); R(n.x - w / 2, n.y - 14, w, 2, on ? n.c : '#3a2a44'); R(n.x - w / 2, n.y + 12, w, 2, on ? n.c : '#3a2a44'); T(n.s, n.x - camR, n.y + 1, { size: 13, color: on ? '#fff' : '#5a4a6a', stroke: on ? n.c : '#2a1c3a', sw: 4 }); }
   for (const x of L.lights) { if (!inView(x, 300) && !L.boss) continue; const cols = ['#ff5b6b', '#ffe36b', '#3ddc6a', '#55e6ff', '#ff9ec4']; for (let k = 0; k < 9; k++) { const lx = x + k * 28, ly = 56 + Math.sin(k / 8 * Math.PI) * 22; R(lx, ly - 4, 1, 4, '#16161d'); R(lx - 2, ly, 5, 6, ((t * 3 | 0) + k) % 3 ? cols[k % 5] : '#3a3a4a'); } }
   for (const z of L.icy) { if (z[1] < camR || z[0] > camR + W) continue; R(z[0], FY, z[1] - z[0], 4, '#bfe9ff'); for (let x = z[0] + 6; x < z[1] - 8; x += 22) R(x, FY + 1, 8, 1, '#fff'); }
@@ -392,7 +397,8 @@ function storyDrawBack() {
 function storyDraw() { drawStoryBoss(); drawShots(); if (L.si === 2) for (const s of snow) { const x = ((s.x - camR * .3 + Math.sin(gameT + s.p) * 12) % W + W) % W + camR, y = (s.y + gameT * s.v) % H; R(x, y, s.s, s.s, '#fff'); } }
 function storyHud() {
   T('ОЧКИ ' + fmt(story.score), W / 2, L.boss ? 52 : 20, { size: 10, color: '#ffe36b', stroke: '#16161d' });
-  const cd = P.dashCd || 0; OV.push(c => { c.fillStyle = '#16161d'; c.fillRect(14, 40, 104, 8); c.fillStyle = cd > 0 ? '#566a92' : '#39e0d0'; c.fillRect(16, 42, 100 * (1 - clamp(cd / .8, 0, 1)), 4); });
+  const cd = P.dashCd || 0; OV.push(c => { c.fillStyle = '#16161d'; c.fillRect(14, 40, 104, 8); c.fillStyle = cd > 0 ? '#566a92' : '#39e0d0'; c.fillRect(16, 42, 100 * (1 - clamp(cd / HR().dcd, 0, 1)), 4); });
+  if (hero() === 1) T((P.barkCd > 0 ? 'ЛАЙ…' : 'ЛАЙ: ↓'), 172, 45, { size: 6, color: P.barkCd > 0 ? '#566a92' : '#ffe36b', align: 'left' });
   T('РЫВОК', 122, 45, { size: 6, color: cd > 0 ? '#566a92' : '#39e0d0', align: 'left' });
   const b = sb;
   if (b && L.boss && !b.dead && b.st !== 'intro') { T(STAGES[b.i].boss, W / 2, 16, { size: 9, color: '#ffd0e8', stroke: '#16161d' }); OV.push(c => { const w = 300 / b.max; c.fillStyle = '#16161d'; c.fillRect(W / 2 - 152, 26, 304, 12); for (let i = 0; i < b.max; i++) { c.fillStyle = i < b.hp ? (b.ph2 ? '#ff5b6b' : '#ffb35b') : '#3a2a44'; c.fillRect(W / 2 - 150 + i * w, 28, w - 2, 8); } }); }
@@ -402,6 +408,7 @@ function storyHud() {
 // ---------- сцены: меню режима, карточки этапа и босса ----------
 function storyScene() {
   const t = sceneT;
+  if (scene === 'smap') return drawMap();
   if (scene === 'smenu') {
     R(0, 0, W, H, '#0a1030'); for (let y = 0; y < H; y += 6) R(0, y, W, 2, '#0d1640');
     T('ВЫБЕРИ РЕЖИМ', W / 2, 54, { size: 22, color: '#ffe36b', stroke: '#16161d', sw: 6 });
@@ -432,11 +439,12 @@ function storyScene() {
   }
 }
 function storyStep(dt, go) {
+  if (scene === 'smap') return stepMap(dt, go);
   if (scene === 'smenu') {
     if (hit('L') || hit('R')) { menuI = 1 - menuI; sfx.select(); }
     let ok = sceneT > .3 && (hit('S') || hit('A') || hit('J'));
     if (hit('T') && sceneT > .3 && tapY > 100 && tapY < 350) { const k = tapX < W / 2 ? 0 : 1; if (k === menuI) ok = true; else { menuI = k; sfx.select(); } }
-    if (ok && !fadeDir) { sfx.ok(); if (menuI === 0) fadeTo(startStory); else fadeTo(() => { scene = 'select'; sceneT = 0; selI = 4; }); }
+    if (ok && !fadeDir) { sfx.ok(); if (menuI === 0) fadeTo(startStory); else fadeTo(() => { resetHero(); scene = 'select'; sceneT = 0; selI = 4; }); }
   } else if (scene === 'sintro') {
     if (sceneT > .3 && sceneT < 1.4 && ((sceneT - .3) * 16 | 0) !== ((sceneT - dt - .3) * 16 | 0)) sfx.blip();
     if ((sceneT > 3.4 || (sceneT > 1 && go)) && !fadeDir) fadeTo(storyStartLevel);

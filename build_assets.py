@@ -143,6 +143,7 @@ story_sheet('s_boss1', ['sb0_1', 'sb0_2', 'sb0_3', 'sb0_4'], 140)
 story_sheet('s_boss2', ['sb1_1', 'sb1_2', 'sb1_3', 'sb1_4'], 122)
 story_sheet('s_boss3', ['sb2_1', 'sb2_2', 'sb2_3', 'sb2_4'], 100)
 story_sheet('s_npc', ['t_stand', 't_give', 'd_a1', 'd_a2', 'd_b1', 'd_b2'], 88)
+story_sheet('s_dog', ['k_idle', 'k_run1', 'k_run2', 'k_jump', 'k_bite', 'k_hurt', 'k_howl'], 50)
 story_sheet('s_items', ['s_crown', 's_orange', 's_snow', 's_gift', 's_coin', 's_fire'], 24, main_only=False)
 meta2 = {}; atlas2_uri = None
 if frames2:
@@ -166,12 +167,16 @@ for k in (1, 2, 3):
         o = 'out/sbg%d%s.png' % (k, suf); im.save(o, optimize=True); pair.append(datauri(o, 'image/png'))
     if pair: sbg.append(pair)
 
+smap = None
+if _os.path.exists('art/s_map.png'):
+    Image.open('art/s_map.png').convert('RGB').resize((800, 450), Image.BOX).quantize(colors=96, method=Image.MEDIANCUT, dither=Image.NONE).save('out/smap.png', optimize=True); smap = datauri('out/smap.png', 'image/png')
+
 out = {
     'atlas': datauri('out/atlas.png', 'image/png'),
     'frames': meta,
     'bg1': datauri('out/bg1.png', 'image/png'),
     'bg2': datauri('out/bg2.png', 'image/png'),
-    'atlas2': atlas2_uri, 'sbg': sbg,
+    'atlas2': atlas2_uri, 'sbg': sbg, 'smap': smap,
     'font_cyr': datauri(FONT_DIR + 'press-start-2p-cyrillic-400-normal.woff', 'font/woff'),
     'font_lat': datauri(FONT_DIR + 'press-start-2p-latin-400-normal.woff', 'font/woff'),
 }
