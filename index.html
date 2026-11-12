@@ -1128,6 +1128,7 @@ function drawIce() {
 function startTikhon() {
   let dir = (boss && boss.x < P.x) ? -1 : 1, stop = P.x - dir * 135;
   if (stop < 80 || stop > W - 80) { dir = -dir; stop = P.x - dir * 135; }
+  if (boss && Math.abs(stop - boss.x) < 115) stop = boss.x - dir * 125;   // не парковаться внутри Пушистика
   tk = { dir, x: dir > 0 ? -90 : W + 90, stop: clamp(stop, 80, W - 80), ph: 0, t: 0, bub: null, money: null, eng: 0, out: 0, sob: 0 };
   mode = 'tikhon'; modeT = 0; P.vx = 0; P.atk = 0; P.bub = null; P.idleAnim = ''; P.crouch = false; P.h = 76; stopSong(); tears = [];
 }
