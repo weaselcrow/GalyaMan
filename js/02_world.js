@@ -344,7 +344,7 @@ function updateRabbits(dt) {
     const dx = P.x - r.x, dist = Math.abs(dx), near = Math.abs(P.y - r.y) < 130;
     if (!r.said && dist < 215 && near && r.line && mode === 'play') { r.said = true; say(r, r.line, 2.8); sfx.blip(); }
     if (r.kind === 'run') {
-      if (r.state !== 'flee' && dist < 205 && near) { r.state = 'flee'; sfx.squeak(); }
+      if (r.state === 'idle' && dist < 205 && near) { r.state = 'flee'; sfx.squeak(); }
       if (r.state === 'flee') {
         const dir = dx > 0 ? -1 : 1; r.face = dir;
         const ahead = r.x + dir * 22;

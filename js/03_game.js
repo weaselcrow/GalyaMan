@@ -105,7 +105,7 @@ function drawPlayer() {
   else if (P.atk > 0) name = (ATK_T - P.atk) < .06 ? 'g_wind' : 'g_smash';
   else if (!P.onGround) name = 'g_jump';
   else if (P.crouch) { if (Math.abs(P.vx) > 20) { name = (P.runT * 7 | 0) % 2 ? 'g_crouch2' : 'g_crouch'; oy = (P.runT * 14 | 0) % 2 ? -1 : 0; } else name = 'g_crouch'; }
-  else if (Math.abs(P.vx) > 30) { if ((P.runT * 4.5) % 1 > .56) { name = 'g_jump'; oy = -14; ox = P.face * 2; } else name = 'g_run'; }
+  else if (Math.abs(P.vx) > 30) name = 'g_r' + ((P.runT * 11 | 0) % 4);
   else if (P.emoteT > 0 && P.emote === 'laugh') name = (P.emoteT / .1 | 0) % 2 ? 'g_laugh2' : 'g_laugh1';
   else if (P.emoteT > 0 && P.emote === 'bark') { name = 'g_idle'; oy = -3; }
   else if (P.idleAnim && mode === 'play') { const fr = idleFrame(P.idleAnim, P.idleA); name = fr[0]; wig = fr[1]; }

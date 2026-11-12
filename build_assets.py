@@ -83,6 +83,8 @@ for name, (im, _) in zip(['g_howl0a', 'g_howl0b', 'g_howl1', 'g_howl2'], wolf[1:
 add_auto(['g_crouch', 'g_crouch2'], [(biggest_blob(wolf[1][0]), None), (biggest_blob(wolf[2][0]), None)])
 add_auto(['g_vod%d' % i for i in range(8)], cut.cut(None, 8, 0.2, path='art/galya_vodka.png', alpha=True))
 add_auto(['g_mask0', 'g_mask1', 'g_mask2'], cut.cut(None, 3, 0.2, path='art/galya_mask.png', alpha=True))
+for name, (im, _) in zip(['g_r0', 'g_r1', 'g_r2', 'g_r3'], cut.cut(None, 4, 0.2, path='art/galya_run.png', alpha=True)):
+    add(name, im, jacket_cx(im))
 add_auto(['g_shake1', 'g_shake2'], cut.cut(None, 2, 0.2, path='art/galya_shake.png'))
 for name, (im, _) in zip(['t_stand', 't_mount', 't_sit', 't_ride', 't_cry1', 't_cry2'], cut.cut(None, 6, 0.3, path='art/tikhon.png', alpha=True)):
     add(name, im, im.width / 2)
