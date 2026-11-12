@@ -42,7 +42,7 @@ const KEYMAP = {
   ArrowLeft: 'L', KeyA: 'L', ArrowRight: 'R', KeyD: 'R',
   ArrowUp: 'J', KeyW: 'J', Space: 'J', KeyZ: 'J',
   KeyX: 'A', KeyJ: 'A', KeyK: 'A', KeyF: 'A', ControlLeft: 'A', ControlRight: 'A',
-  ArrowDown: 'D', KeyS: 'D', KeyC: 'DS', ShiftLeft: 'DS', ShiftRight: 'DS', KeyL: 'DS', Enter: 'S', NumpadEnter: 'S', KeyM: 'M', KeyP: 'P', Escape: 'P'
+  ArrowDown: 'D', KeyS: 'D', KeyQ: 'SW', KeyE: 'SW', Tab: 'SW', KeyC: 'DS', ShiftLeft: 'DS', ShiftRight: 'DS', KeyL: 'DS', Enter: 'S', NumpadEnter: 'S', KeyM: 'M', KeyP: 'P', Escape: 'P'
 };
 function press(k) { if (!held[k]) pressed[k] = true; held[k] = true; if (k !== 'M' && k !== 'P') anyPress = true; audioInit(); }
 function release(k) { held[k] = false; }

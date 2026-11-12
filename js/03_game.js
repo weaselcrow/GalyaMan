@@ -44,7 +44,7 @@ function updatePlayer(dt, ctrl) {
   if (P.jbuf > 0 && P.coyote > 0) { P.vy = -HR().jmp; P.jbuf = 0; P.coyote = 0; P.onGround = false; sfx.jump(); burst(P.x, P.y, 5, ['#cfd8e6', '#8fa3c7'], 70, .3); }
   else if (ctrl && hit('J') && !P.onGround && HR().dj && !P.djUsed) { P.vy = -HR().jmp * .9; P.djUsed = true; P.jbuf = 0; sfx.jump(); burst(P.x, P.y, 7, ['#fff', '#ffe36b'], 100, .3); }
   if (ctrl && !down('J') && P.vy < -190 && P.hurtT <= 0 && !(P.boost > 0)) P.vy = -190;
-  if (ctrl && hit('A') && P.atk <= 0) { P.atk = ATK_T; P.atkSet = new Set(); sfx.swing(); if (HR().lunge) P.vx = P.face * HR().lunge; }
+  if (ctrl && hit('A') && P.atk <= 0 && !(P.atkCd > 0)) { P.atkCd = ATK_T + (HR().acd || 0); P.atk = ATK_T; P.atkSet = new Set(); sfx.swing(); if (HR().lunge) P.vx = P.face * HR().lunge; }
   if (P.atk > 0) {
     const e = ATK_T - P.atk; P.atk -= dt;
     if (e >= .06 && e < .2) attackHits();
@@ -94,10 +94,10 @@ function drawPlayer() {
   else if (P.emoteT > 0 && P.emote === 'laugh') name = (P.emoteT / .1 | 0) % 2 ? 'g_laugh2' : 'g_laugh1';
   else if (P.emoteT > 0 && P.emote === 'bark') { name = 'g_idle'; oy = -3; }
   else if (P.idleT > 3.5 && mode === 'play') wig = true;
-  if (P.trail && P.trail.length && F.g_run) for (const q of P.trail) spr(hero() === 1 && F.k_run1 ? 'k_run1' : 'g_run', q.x, q.y, flip, { img: atlasW, a: clamp(q.t * 2.2, 0, .5) });
+  if (P.trail && P.trail.length && F.g_run) for (const q of P.trail) spr(HR().fr && F[HR().fr.run[0]] ? HR().fr.run[0] : 'g_run', q.x, q.y, flip, { img: atlasW, a: clamp(q.t * 2.2, 0, .5) });
   if (P.dash > 0) name = 'g_run';
   if (P.inv > 0 && !(P.dash > 0) && P.hurtT <= 0 && mode === 'play' && (P.inv * 18 | 0) % 2) return;
-  if (hero() === 1) { drawDog(name, oy, flip); return; }
+  if (hero() > 0) { drawDog(name, oy, flip); return; }
   const lv = stats.kills >= 18 ? 3 : stats.kills >= 9 ? 2 : stats.kills >= 3 ? 1 : 0, img = galB[lv];
   if (P.bigHat) spr('hat', P.x + (flip ? -4 : 4), P.y + oy - HEADTOP[name] + 24, flip, { sx: 1.7 });
   if (wig) {

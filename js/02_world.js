@@ -328,7 +328,7 @@ function updateRabbits(dt) {
 }
 function hitRabbit(r, dir) {
   if (r.ko > 0 || r.dead) return;
-  if (r.hp > 1) { armorHit(r, dir); return; }
+  const pw = HR().pow || 1; if (r.hp > pw) { r.hp -= pw - 1; armorHit(r, dir); return; }
   r.ko = .13; r.koDir = dir; r.bub = null; hitstop = .055; sfx.bonk(); sfx.squeak();
   say(r, pick(LAST), .5);
   floater(pick(BONK), r.x + dir * 10, r.y - 56, { color: '#ffe36b', size: 14, t: .5, rot: rnd(-.3, .3), vy: -60 });

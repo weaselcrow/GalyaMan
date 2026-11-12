@@ -1,8 +1,19 @@
 // ---------- СЮЖЕТ, ЧАСТЬ 2: второй герой, механики уровней, карта мира ----------
 const HEROES = [
   { name: 'ГАЛЯ', sub: 'сковородка, 5 сердец', sp: 190, jmp: 530, h: 76, hp: 5, dcd: .8, reach: 78, top: 96, dj: false, lunge: 0 },
-  { name: 'ДВОРНЯГА', sub: 'быстрая, двойной прыжок, лай', sp: 238, jmp: 500, h: 44, hp: 4, dcd: .5, reach: 66, top: 62, dj: true, lunge: 250 }
+  { name: 'ДВОРНЯГА', sub: 'быстрая, двойной прыжок, лай', sp: 238, jmp: 500, h: 44, hp: 4, dcd: .5, reach: 66, top: 62, dj: true, lunge: 250, spName: 'ЛАЙ', sc: .8,
+    fr: { idle: 'k_idle', run: ['k_run1', 'k_run2'], jump: 'k_jump', wind: 'k_bite', atk: 'k_bite', hurt: 'k_hurt', spec: 'k_howl' } },
+  { name: 'МАМОЧКА', sub: 'шуба, сумочка, каблук вдаль', sp: 168, jmp: 520, h: 78, hp: 6, dcd: 1, reach: 96, top: 100, dj: false, lunge: 0, pow: 2, acd: .22, spName: 'КАБЛУК', sc: .55,
+    fr: { idle: 'm_idle', run: ['m_run', 'm_idle'], jump: 'm_jump', wind: 'm_wind', atk: 'm_atk', hurt: 'm_hurt', spec: 'm_spec' } }
 ];
+const heroOpen = i => i === 0 || (i === 1 && story && story.dog) || (i === 2 && story && story.mama);
+function nextHero() { let n = story.ch; for (let k = 0; k < 3; k++) { n = (n + 1) % 3; if (heroOpen(n)) return n; } return story.ch; }
+// смена героя на ходу (Q / E / Tab), как смена оружия
+function swapHero(quiet) {
+  if (!story) return false; const n = nextHero(); if (n === story.ch) { if (!quiet) sfx.buzz(); return false; }
+  story.ch = n; if (scene === 'play' && L && L.story) { const hp = P.hp; applyHero(); P.hp = Math.min(hp, P.maxhp); P.swapCd = .45; burst(P.x, P.y - 34, 16, ['#fff', '#ffe36b', '#39e0d0'], 190, .4, 0); fxs.push({ k: 'star', x: P.x, y: P.y - 34, t: 0, max: .16 }); floater(HEROES[n].name, P.x, P.y - 104, { color: '#ffe36b', size: 11, t: .9 }); }
+  if (n === 1) sfx.bark(); else if (n === 2) { tn('square', 880, 1320, .08, .1); tn('square', 1320, 1760, .1, .1, .08); } else sfx.laugh(3, 620, .1); return true;
+}
 const hero = () => (story && L && L.story ? story.ch : 0);
 const HR = () => HEROES[hero()];
 function applyHero() { const h = HR(); P.h = h.h; P.maxhp = h.hp; P.hp = h.hp; P.djUsed = false; P.boost = 0; P.barkCd = 0; }
@@ -10,24 +21,39 @@ function resetHero() { P.h = 76; P.maxhp = 5; }
 
 // ---------- сохранение ----------
 const SAVE_KEY = 'galyamen_story_v1';
-function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); return { beaten: (s.beaten || [0, 0, 0]).slice(0, 3), dog: !!s.dog, best: s.best || 0 }; } catch (e) { return { beaten: [0, 0, 0], dog: false, best: 0 }; } }
-function saveStory() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beaten: story.beaten, dog: story.dog, best: Math.max(story.best || 0, story.score) })); } catch (e) { } }
+function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); return { beaten: (s.beaten || [0, 0, 0]).slice(0, 3), dog: !!s.dog, mama: !!s.mama, best: s.best || 0 }; } catch (e) { return { beaten: [0, 0, 0], dog: false, mama: false, best: 0 }; } }
+function saveStory() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beaten: story.beaten, dog: story.dog, mama: story.mama, best: Math.max(story.best || 0, story.score) })); } catch (e) { } }
 
 // ---------- дворняга ----------
-function drawDog(name, oy, flip) {
-  let n = 'k_idle', y = P.y + oy;
-  if (mode === 'celebrate') { n = (cele.t * 6 | 0) % 2 ? 'k_howl' : 'k_idle'; }
-  else if (name === 'g_hit') n = 'k_hurt';
-  else if (name === 'g_wind' || name === 'g_smash') n = 'k_bite';
-  else if (P.dash > 0) n = 'k_run1';
-  else if (!P.onGround) n = 'k_jump';
-  else if (Math.abs(P.vx) > 30) { n = (P.runT * 11 | 0) % 2 ? 'k_run2' : 'k_run1'; y = P.y; }
-  else if (P.emoteT > 0) { n = 'k_howl'; }
-  else if (P.idleT > 3.5) { n = (gameT * 3 | 0) % 2 ? 'k_howl' : 'k_idle'; }
+function drawDog(name, oy, flip) { // общий рисовальщик для героев со своими кадрами
+  const fr = HR().fr; let n = fr.idle, y = P.y + oy;
+  if (mode === 'celebrate') n = (cele.t * 6 | 0) % 2 ? fr.spec : fr.idle;
+  else if (name === 'g_hit') n = fr.hurt;
+  else if (P.specT > 0) n = fr.spec;
+  else if (name === 'g_wind') n = fr.wind;
+  else if (name === 'g_smash') n = fr.atk;
+  else if (P.dash > 0) n = fr.run[0];
+  else if (!P.onGround) n = fr.jump;
+  else if (Math.abs(P.vx) > 30) { const k = (P.runT * (hero() === 1 ? 11 : 7) | 0) % 2; n = fr.run[k]; y = P.y - (hero() === 2 && k ? 3 : 0); }
+  else if (P.emoteT > 0) n = fr.spec;
+  else if (P.idleT > 3.5) n = (gameT * 3 | 0) % 2 ? fr.spec : fr.idle;
   else y = P.y - ((gameT * 2.5 | 0) % 2);
-  if (!has(n)) n = has('k_idle') ? 'k_idle' : null;
-  if (n) spr(n, P.x, y, flip); else { R(P.x - 16, P.y - 30, 32, 30, '#16161d'); R(P.x - 14, P.y - 28, 28, 26, '#c9a06a'); }
-  if (P.bigHat && has('hat')) spr('hat', P.x + (flip ? -8 : 8), P.y - 26, flip, { sx: 1.2 });
+  if (!has(n)) n = has(fr.idle) ? fr.idle : null;
+  if (n) spr(n, P.x, y, flip); else { R(P.x - 16, P.y - P.h, 32, P.h, '#16161d'); R(P.x - 14, P.y - P.h + 2, 28, P.h - 4, '#c9a06a'); }
+  if (P.bigHat && has('hat')) spr('hat', P.x + (flip ? -8 : 8), P.y - P.h + 18, flip, { sx: 1.2 });
+}
+// Мамочка: каблук летит по прямой, бьёт кроликов и босса, сбивает снаряды
+let pshots = [];
+function throwShoe() { P.barkCd = 1.1; P.specT = .28; pshots.push({ x: P.x + P.face * 22, y: P.y - 52, vx: P.face * 430, rot: 0, life: 1.5, d: P.face }); sfx.swing(); tn('square', 900, 1400, .06, .08); }
+function updatePshots(dt) {
+  P.specT = Math.max(0, (P.specT || 0) - dt);
+  for (let i = pshots.length - 1; i >= 0; i--) {
+    const s = pshots[i]; s.life -= dt; s.x += s.vx * dt; s.rot += dt * 16 * s.d; let dead = s.life <= 0 || s.x < cam - 40 || s.x > cam + W + 40;
+    const q = solidAt(s.x, s.y); if (q && q.k !== 'p') dead = true;
+    if (!dead) for (const r of L.rabbits) { if (r.dead || r.ko > 0) continue; const hw = 14 * r.scale; if (Math.abs(r.x - s.x) < hw + 8 && s.y < r.y && s.y > r.y - 40 * r.scale) { hitRabbit(r, s.d); dead = true; break; } }
+    if (!dead) { const n0 = shots.length, old = P.atkSet, b = sb, hp0 = b ? b.hp : 0; P.atkSet = new Set(); storyAttack(s.x - 10, s.x + 10, s.y - 10, s.y + 10); P.atkSet = old; if (shots.length < n0 || (b && (b.hp < hp0 || (b.armored && Math.abs(b.x - s.x) < b.hw + 10 && s.y > b.y - b.h)))) dead = true; }
+    if (dead) { burst(s.x, s.y, 5, ['#d81b2a', '#fff'], 110, .3); pshots.splice(i, 1); }
+  }
 }
 function dogBark() {
   P.barkCd = 3.5; doBark(); shake = Math.max(shake, 5); fxs.push({ k: 'star', x: P.x + P.face * 20, y: P.y - 30, t: 0, max: .18 });
@@ -66,7 +92,10 @@ function storyExtras(l, i) {
 function updateExtras(dt) {
   const live = mode === 'play';
   P.boost = Math.max(0, (P.boost || 0) - dt); P.barkCd = Math.max(0, (P.barkCd || 0) - dt);
-  if (live && hero() === 1 && hit('D') && P.barkCd <= 0) dogBark();
+  P.atkCd = Math.max(0, (P.atkCd || 0) - dt); P.swapCd = Math.max(0, (P.swapCd || 0) - dt);
+  if (live && hit('D') && P.barkCd <= 0 && P.hurtT <= 0) { if (hero() === 1) dogBark(); else if (hero() === 2) throwShoe(); }
+  if (live && hit('SW') && P.swapCd <= 0 && P.hurtT <= 0 && !(P.dash > 0)) swapHero();
+  updatePshots(dt);
   for (const s of L.springs) { s.t = Math.max(0, s.t - dt); if (live && P.vy >= 0 && Math.abs(P.x - s.x) < 20 && P.y >= s.y - 8 && P.y <= s.y + 6) { P.vy = -810; P.onGround = false; P.airDash = true; P.djUsed = false; P.boost = .7; P.jbuf = 0; s.t = .25; tn('square', 220, 880, .16, .12); burst(s.x, s.y, 8, ['#fff', '#ffe36b'], 150, .35); } }
   for (const s of L.crumbles) { const c = s.cr; if (c.st === 0) { if (P.ground === s && P.onGround) { c.st = 1; c.t = .5; sfx.click(); } } else if (c.st === 1) { c.t -= dt; if (c.t <= 0) { c.st = 2; c.t = 2.8; burst(s.x + s.w / 2, s.y + 6, 12, [L.th.box, L.th.boxLo, L.th.hi], 140, .5); s.y = 9999; sfx.thud(); } } else { c.t -= dt; if (c.t <= 0) { c.st = 0; s.y = c.y0; } } }
   for (const s of L.lifts) { const f = s.lf, dy = f.sp * f.d * dt; s.y += dy; if (s.y < f.y0) { s.y = f.y0; f.d = 1; } if (s.y > f.y1) { s.y = f.y1; f.d = -1; } if (P.ground === s && P.onGround) P.y = s.y; }
@@ -84,6 +113,7 @@ function drawExtras() {
   for (const q of L.tiles) { if (q.x + q.w < camR || q.x > camR + W) continue; const ph = (t + q.ph) % 2.6, hot = ph > 2, warn = ph > 1.5 && !hot; for (let x = q.x, k = 0; x < q.x + q.w; x += 20, k++) { const w = Math.min(19, q.x + q.w - x); R(x, FY, w, 8, hot ? (k % 2 ? '#ff3b4b' : '#ffe36b') : warn ? ((t * 14 | 0) % 2 ? '#ff8a94' : '#5a2a4a') : (k + (t * 2 | 0)) % 2 ? '#3a2a6a' : '#55e6ff'); R(x, FY, w, 1, '#fff'); if (hot) { R(x + 6 + rint(-3, 3), FY - rint(4, 22), 2, 8, '#fff'); } } }
   for (const c of L.icicles) { if (c.st === 2 || !inView(c.x)) continue; const ox = c.st === 1 ? ((t * 40 | 0) % 2 ? 1 : -1) : 0, x = c.x + ox; g.fillStyle = '#16161d'; g.beginPath(); g.moveTo(x - 7, c.y - 1); g.lineTo(x + 7, c.y - 1); g.lineTo(x, c.y + 24); g.fill(); g.fillStyle = '#bfe9ff'; g.beginPath(); g.moveTo(x - 5, c.y); g.lineTo(x + 5, c.y); g.lineTo(x, c.y + 20); g.fill(); R(x - 3, c.y + 1, 2, 9, '#fff'); }
   if ((t % 3.4) < 1.7) for (const w of L.winds) { if (w.x1 < camR || w.x0 > camR + W) continue; T('≪≪≪', (w.x0 + w.x1) / 2 - camR, 110, { size: 14, color: '#fff', a: .5 + .3 * Math.sin(t * 20) }); }
+  for (const s of pshots) { g.save(); g.translate(Math.round(s.x), Math.round(s.y)); g.rotate(s.rot); R(-9, -5, 18, 9, '#16161d'); R(-8, -4, 13, 6, '#d81b2a'); R(-8, -4, 13, 2, '#ff6b7a'); R(4, -4, 4, 3, '#d81b2a'); R(5, -1, 2, 8, '#16161d'); R(-8, 2, 6, 2, '#16161d'); g.restore(); }
   for (const s of shots) { if (s.k === 'roll') { const x = Math.round(s.x), y = Math.round(s.y), c = L.si === 2 ? ['#eef6ff', '#bcd4ea'] : L.si === 1 ? ['#8a5a3a', '#5a3422'] : ['#e9c04a', '#b88a22']; g.save(); g.translate(x, y); g.rotate(s.rot); g.fillStyle = '#16161d'; g.beginPath(); g.arc(0, 0, 19, 0, 6.3); g.fill(); g.fillStyle = c[0]; g.beginPath(); g.arc(0, 0, 17, 0, 6.3); g.fill(); g.fillStyle = c[1]; g.fillRect(-15, -2, 30, 4); g.fillRect(-2, -15, 4, 30); g.fillRect(-9, -11, 5, 3); g.fillRect(6, 7, 5, 3); g.restore(); }
     else if (s.k === 'ici') { const x = Math.round(s.x), y = Math.round(s.y); g.fillStyle = '#16161d'; g.beginPath(); g.moveTo(x - 7, y - 14); g.lineTo(x + 7, y - 14); g.lineTo(x, y + 10); g.fill(); g.fillStyle = '#bfe9ff'; g.beginPath(); g.moveTo(x - 5, y - 13); g.lineTo(x + 5, y - 13); g.lineTo(x, y + 7); g.fill(); } }
 }
@@ -98,14 +128,16 @@ function nodeOpen(i) { return i === 0 || story.beaten[i - 1]; }
 function gotoMap(pos) { scene = 'smap'; sceneT = 0; mapT = 1; if (pos !== undefined) story.pos = clamp(pos, 0, 2); mapFrom = story.pos; playSong('map'); }
 function storyWin() {
   const i = story.i, first = !story.beaten[i]; story.beaten[i] = 1;
-  if (i === 0 && !story.dog) { story.dog = true; story.unlock = 6; }
+  if (i === 0 && !story.dog) { story.dog = true; story.unlock = 6; story.who = 1; }
+  if (i === 1 && !story.mama) { story.mama = true; story.unlock = 6; story.who = 2; }
   saveStory();
   if (i === 2 && first) fadeTo(startEnding); else fadeTo(() => gotoMap(first ? i + 1 : i));
 }
 function drawMapHero(x, y, moving) {
   const bob = moving ? -Math.abs(Math.sin(sceneT * 14)) * 4 : -((sceneT * 2 | 0) % 2);
   g.globalAlpha = .35; R(x - 12, y - 2, 24, 5, '#000'); g.globalAlpha = 1;
-  if (story.ch === 1 && has('k_idle')) spr(moving ? ((sceneT * 10 | 0) % 2 ? 'k_run2' : 'k_run1') : 'k_idle', x, y + bob, mapFrom > story.pos, { sx: .8 });
+  const fr = HEROES[story.ch].fr;
+  if (fr && has(fr.idle)) spr(moving ? fr.run[(sceneT * 10 | 0) % 2] : fr.idle, x, y + bob, mapFrom > story.pos, { sx: HEROES[story.ch].sc });
   else spr(moving ? 'g_run' : 'g_idle', x, y + bob, mapFrom > story.pos, { sx: .55 });
 }
 function drawMap() {
@@ -131,19 +163,19 @@ function drawMap() {
   // панель героя и этапа
   const h = HEROES[story.ch], S = STAGES[story.pos];
   R(12, H - 58, 50, 50, '#16161d'); R(14, H - 56, 46, 46, story.ch ? '#3a2a14' : '#5a1420');
-  if (story.ch === 1 && has('k_idle')) spr('k_idle', 37, H - 14, false, { sx: .8 }); else { const fg = F.g_idle; g.drawImage(atlas, fg[0] + 6, fg[1], 42, 42, 16, H - 54, 42, 42); }
+  if (h.fr && has(h.fr.idle)) { g.save(); g.beginPath(); g.rect(14, H - 56, 46, 46); g.clip(); spr(h.fr.idle, 37, story.ch === 2 ? H + 22 : H - 14, false, { sx: story.ch === 2 ? .9 : .8 }); g.restore(); } else { const fg = F.g_idle; g.drawImage(atlas, fg[0] + 6, fg[1], 42, 42, 16, H - 54, 42, 42); }
   T(h.name, 72, H - 46, { size: 11, color: '#ffe36b', align: 'left', stroke: '#16161d' }); T(h.sub, 72, H - 30, { size: 7, color: '#bff7ee', align: 'left' });
-  T(story.dog ? (TOUCH ? 'тапни по портрету — сменить' : '↓ / S — сменить героя') : 'второй герой: пройди Деревню', 72, H - 16, { size: 7, color: story.dog ? '#fff' : '#8f9ad0', align: 'left' });
+  T(story.dog ? (TOUCH ? 'тапни по портрету — сменить' : '↓ / Q — сменить героя') : 'второй герой: пройди Деревню', 72, H - 16, { size: 7, color: story.dog ? '#fff' : '#8f9ad0', align: 'left' });
   T(S.name, W - 16, H - 46, { size: 12, color: '#fff', align: 'right', stroke: '#16161d' }); T('босс: ' + S.boss, W - 16, H - 30, { size: 8, color: '#ffd0e8', align: 'right' });
   if ((t * 2 | 0) % 2) T(TOUCH ? 'ТАПНИ ПО ЭТАПУ' : '← →  ЭТАП     ENTER  В БОЙ', W - 16, H - 14, { size: 8, color: '#ffe36b', align: 'right' });
-  if (story.unlock > 0) { const p = Math.min(1, (6 - story.unlock) * 4); OV.push(c => { c.fillStyle = 'rgba(10,8,24,.86)'; c.fillRect(W / 2 - 230, 150, 460, 130); c.fillStyle = '#ffe36b'; c.fillRect(W / 2 - 230, 150, 460, 3); c.fillRect(W / 2 - 230, 277, 460, 3); }); if (has('k_howl')) spr((t * 4 | 0) % 2 ? 'k_howl' : 'k_idle', W / 2 - 150, 262, false, { sx: 1.5 }); T('НОВЫЙ ГЕРОЙ!', W / 2 + 50, 182, { size: 20 * p, color: '#ffe36b', stroke: '#16161d', sw: 6 }); T('ДВОРНЯГА', W / 2 + 50, 214, { size: 16, color: '#fff', stroke: '#16161d', sw: 5 }); T('сидела в сарае у деда.', W / 2 + 50, 240, { size: 8, color: '#bff7ee' }); T('теперь она с Галей', W / 2 + 50, 256, { size: 8, color: '#bff7ee' }); }
+  if (story.unlock > 0) { const p = Math.min(1, (6 - story.unlock) * 4); OV.push(c => { c.fillStyle = 'rgba(10,8,24,.86)'; c.fillRect(W / 2 - 230, 150, 460, 130); c.fillStyle = '#ffe36b'; c.fillRect(W / 2 - 230, 150, 460, 3); c.fillRect(W / 2 - 230, 277, 460, 3); }); const wh = story.who || 1, hf = HEROES[wh].fr; if (has(hf.spec)) spr((t * 4 | 0) % 2 ? hf.spec : hf.idle, W / 2 - 150, 268, false, { sx: wh === 1 ? 1.5 : 1.1 }); T('НОВЫЙ ГЕРОЙ!', W / 2 + 50, 182, { size: 20 * p, color: '#ffe36b', stroke: '#16161d', sw: 6 }); T(HEROES[wh].name, W / 2 + 50, 214, { size: 16, color: '#fff', stroke: '#16161d', sw: 5 }); T(wh === 1 ? 'сидела в сарае у деда.' : 'хозяйка Занозы и девочек.', W / 2 + 50, 240, { size: 8, color: '#bff7ee' }); T(wh === 1 ? 'теперь она с Галей' : 'Апельсин ей задолжал', W / 2 + 50, 256, { size: 8, color: '#bff7ee' }); }
 }
 function stepMap(dt, go) {
   if (story.unlock > 0) { story.unlock -= dt; if (story.unlock < 5 && go) story.unlock = 0; if (story.unlock > 5.9 && story.unlock + dt >= 5.9) { sfx.heal(); sfx.bark(); } return; }
   if (mapT < 1) mapT += dt * 2.2;
   const move = d => { const n = story.pos + d; if (n < 0 || n > 2) return; if (!nodeOpen(n)) { sfx.buzz(); return; } mapFrom = story.pos; story.pos = n; mapT = 0; sfx.select(); };
-  const swap = () => { if (story.dog) { story.ch = 1 - story.ch; if (story.ch) sfx.bark(); else sfx.laugh(3, 620, .1); } else sfx.buzz(); };
-  if (hit('L')) move(-1); if (hit('R')) move(1); if (hit('D')) swap();
+  const swap = () => swapHero();
+  if (hit('L')) move(-1); if (hit('R')) move(1); if (hit('D') || hit('SW')) swap();
   let ok = sceneT > .3 && (hit('S') || hit('A') || hit('J')) && mapT >= 1;
   if (hit('T') && sceneT > .3) { if (tapY > H - 64 && tapX < 300) swap(); else NODES.forEach((n, i) => { if (Math.abs(tapX - n[0]) < 60 && Math.abs(tapY - n[1]) < 50) { if (i === story.pos) ok = mapT >= 1; else if (nodeOpen(i)) { mapFrom = story.pos; story.pos = i; mapT = 0; sfx.select(); } else sfx.buzz(); } }); }
   if (ok && !fadeDir) { sfx.ok(); story.i = story.pos; fadeTo(() => { scene = 'sintro'; sceneT = 0; stopSong(); }); }
@@ -161,7 +193,7 @@ function pauseStep() {
   if (!ok) return;
   if (pmI === 0) { paused = false; sfx.ok(); }
   else if (pmI === 3) { // сменить героя прямо из паузы
-    if (story && story.dog) { story.ch = 1 - story.ch; if (scene === 'play') { const hp = P.hp; applyHero(); P.hp = Math.min(hp, P.maxhp); if (L.boss) P.y = FYB; } if (story.ch) sfx.bark(); else sfx.laugh(3, 620, .1); } else sfx.buzz();
+    swapHero();
   }
   else if (pmI === 5) toggleMute();
   else if (pmI === 6) {
@@ -175,8 +207,8 @@ function pauseRows() {
   switch (pmI) {
     case 0: return { title: inStory ? (scene === 'smap' ? 'КАРТА ПОХОДА' : STAGES[story.i].name) : 'КЛАССИКА: СЕЗОН ШАПОК', rows: [['ГЕРОЙ', inStory ? HEROES[story.ch].name : 'ГАЛЯ'], ['СЕРДЦА', P.hp + ' / ' + P.maxhp]].concat(inStory ? [['ОЧКИ', fmt(story.score)], ['ЭТАПОВ ПРОЙДЕНО', story.beaten.filter(Boolean).length + ' / 3']] : [['ШАПОК', st.hats || 0]]), note: 'игра на паузе' };
     case 1: return { title: 'СТАТИСТИКА', rows: (inStory ? [['ОЧКИ', fmt(story.score)], ['РЕКОРД', fmt(Math.max(story.best || 0, story.score))], ['ЭТАПЫ', story.beaten.filter(Boolean).length + ' / 3'], ['ТИХОН НАЙДЕН', story.tikGot + ' раз (+' + fmt(story.tikGot * 3000) + ')']] : []).concat([['ШАПОК', st.hats || 0], ['КРОЛИКОВ', st.kills || 0], ['ЛУЧШЕЕ КОМБО', 'x' + (st.best || 0)], ['ЧЕМОДАНОВ', (st.cases || 0) + ' / ' + (st.casesTotal || 0)], ['ПРОПУЩЕНО УДАРОВ', st.hits || 0], ['ГАЛЯ ПАЛА', (st.deaths || 0) + ' раз'], ['ВРЕМЯ', mm], ['РАНГ', stats ? rankOf() : '—']]) };
-    case 2: return { title: 'УПРАВЛЕНИЕ', rows: TOUCH ? [['◀ ▶', 'бег'], ['ПРЫГ', 'прыжок'], ['БИТЬ', 'удар'], ['РЫВОК', 'неуязвимость'], ['ЗВУК', 'вкл / выкл']] : [['← →  /  A D', 'бег'], ['ПРОБЕЛ / Z / ↑', 'прыжок'], ['X / J', 'удар'], ['C / SHIFT / L', 'рывок'], ['↓ / S', 'лай (дворняга)'], ['P / ESC', 'это меню'], ['M', 'звук']], note: 'держи прыжок дольше — прыгнешь выше' };
-    case 3: return { title: 'ГЕРОИ', rows: [['ГАЛЯ', '5 сердец'], ['', 'сковородка: бьёт далеко'], ['', 'рывок: 0,8 с'], [inStory && story.dog ? 'ДВОРНЯГА' : '? ? ?', inStory && story.dog ? '4 сердца' : 'пройди Деревню'], ['', inStory && story.dog ? 'быстрая, двойной прыжок' : ''], ['', inStory && story.dog ? 'лай оглушает и сбивает снаряды' : ''], ['', inStory && story.dog ? 'рывок: 0,5 с' : '']], note: !inStory ? 'дворняга есть только в сюжете' : story.dog ? 'ENTER — сменить героя (сейчас: ' + HEROES[story.ch].name + ')' : 'дворняга откроется после Деревни' };
+    case 2: return { title: 'УПРАВЛЕНИЕ', rows: TOUCH ? [['◀ ▶', 'бег'], ['ПРЫГ', 'прыжок'], ['БИТЬ', 'удар'], ['РЫВОК', 'неуязвимость'], ['ГЕРОЙ', 'сменить героя'], ['ЗВУК', 'вкл / выкл']] : [['← →  /  A D', 'бег'], ['ПРОБЕЛ / Z / ↑', 'прыжок'], ['X / J', 'удар'], ['C / SHIFT / L', 'рывок'], ['↓ / S', 'лай / каблук'], ['Q / E / TAB', 'сменить героя'], ['P / ESC', 'это меню'], ['M', 'звук']], note: 'держи прыжок дольше — прыгнешь выше' };
+    case 3: return { title: 'ГЕРОИ', rows: [['ГАЛЯ', '5 сердец. сковородка, рывок 0,8 с']].concat(inStory && story.dog ? [['ДВОРНЯГА', '4 сердца. быстрая, двойной прыжок'], ['', '↓ лай: оглушает, сбивает снаряды']] : [['? ? ?', 'пройди Деревню']], inStory && story.mama ? [['МАМОЧКА', '6 сердец. медленная, бьёт сильно'], ['', 'сумочка: 2 урона, далеко достаёт'], ['', '↓ каблук: летит через весь экран']] : [['? ? ?', 'пройди Занозу']]), note: !inStory ? 'другие герои есть только в сюжете' : story.dog ? 'ENTER или Q в игре — сменить (сейчас: ' + HEROES[story.ch].name + ')' : 'герои открываются за боссов' };
     case 4: return { title: 'ВРАГИ', rows: [['КУСАКА', '1 удар. прыгает на тебя'], ['МЕТАТЕЛЬ', '1 удар. морковку можно отбить'], ['ВЫШИБАЛА', '3 удара. медленный'], ['САНТА', '1 удар. снежки летят прямо'], ['ВЕДЬМАК', '2 удара. дрожит — будет выпад'], ['БОСС', 'выдохся — урон x2'], ['ТИХОН', 'не враг. +3 000 очков']], note: 'рывок проходит сквозь всё' };
     case 5: return { title: 'ЗВУК', rows: [['СЕЙЧАС', muted ? 'выключен' : 'включён']], note: 'ENTER — переключить' };
     default: return { title: story && scene === 'play' ? 'ВЫЙТИ НА КАРТУ' : 'ВЫЙТИ В МЕНЮ', rows: story && scene === 'play' ? [['ЭТАП', 'начнётся заново'], ['ОЧКИ', 'сохранятся']] : [['ПРОГРЕСС СЮЖЕТА', 'сохранён']], note: 'ENTER — выйти' };
@@ -202,3 +234,4 @@ function drawPause() {
 }
 
 if (document.getElementById('bp')) document.getElementById('bp').addEventListener('pointerdown', e => { e.preventDefault(); audioInit(); press('P'); release('P'); });
+if (document.getElementById('bh')) document.getElementById('bh').addEventListener('pointerdown', e => { e.preventDefault(); audioInit(); press('SW'); release('SW'); });

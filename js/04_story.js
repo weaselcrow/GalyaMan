@@ -160,7 +160,7 @@ function buildStoryArena(i) {
 }
 
 // ---------- поток ----------
-function clearWorld() { parts = []; gibs = []; stains = []; splats = []; pickups = []; floats = []; fxs = []; tears = []; puddles = []; shots = []; warns = []; chain = 0; chainT = 0; pendingCele = false; ice = null; boss = null; sb = null; tik = null; walker = null; walkerT = 12; letterT = 0; hitstop = 0; slow = 1; }
+function clearWorld() { pshots = []; parts = []; gibs = []; stains = []; splats = []; pickups = []; floats = []; fxs = []; tears = []; puddles = []; shots = []; warns = []; chain = 0; chainT = 0; pendingCele = false; ice = null; boss = null; sb = null; tik = null; walker = null; walkerT = 12; letterT = 0; hitstop = 0; slow = 1; }
 function startStory() { newGame(); story = Object.assign({ i: 0, score: 0, tikGot: 0, ch: 0, pos: 0, unlock: 0 }, loadSave()); const nx = story.beaten.indexOf(0); gotoMap(nx < 0 ? 2 : nx); }
 function storyStartLevel() {
   const i = story.i; clearWorld(); iceSeen = false; fallCase = true;
@@ -398,7 +398,7 @@ function storyDraw() { drawStoryBoss(); drawShots(); if (L.si === 2) for (const 
 function storyHud() {
   T('ОЧКИ ' + fmt(story.score), W / 2, L.boss ? 52 : 20, { size: 10, color: '#ffe36b', stroke: '#16161d' });
   const cd = P.dashCd || 0; OV.push(c => { c.fillStyle = '#16161d'; c.fillRect(14, 40, 104, 8); c.fillStyle = cd > 0 ? '#566a92' : '#39e0d0'; c.fillRect(16, 42, 100 * (1 - clamp(cd / HR().dcd, 0, 1)), 4); });
-  if (hero() === 1) T((P.barkCd > 0 ? 'ЛАЙ…' : 'ЛАЙ: ↓'), 172, 45, { size: 6, color: P.barkCd > 0 ? '#566a92' : '#ffe36b', align: 'left' });
+  if (hero() > 0) T((P.barkCd > 0 ? HR().spName + '…' : HR().spName + ': ↓'), 172, 45, { size: 6, color: P.barkCd > 0 ? '#566a92' : '#ffe36b', align: 'left' });
   T('РЫВОК', 122, 45, { size: 6, color: cd > 0 ? '#566a92' : '#39e0d0', align: 'left' });
   const b = sb;
   if (b && L.boss && !b.dead && b.st !== 'intro') { T(STAGES[b.i].boss, W / 2, 16, { size: 9, color: '#ffd0e8', stroke: '#16161d' }); OV.push(c => { const w = 300 / b.max; c.fillStyle = '#16161d'; c.fillRect(W / 2 - 152, 26, 304, 12); for (let i = 0; i < b.max; i++) { c.fillStyle = i < b.hp ? (b.ph2 ? '#ff5b6b' : '#ffb35b') : '#3a2a44'; c.fillRect(W / 2 - 150 + i * w, 28, w - 2, 8); } }); }
