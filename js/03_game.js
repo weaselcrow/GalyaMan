@@ -25,14 +25,14 @@ function updatePlayer(dt, ctrl) {
   P.inv = Math.max(0, P.inv - dt); P.emoteT = Math.max(0, P.emoteT - dt);
   if (P.hurtT > 0) { P.hurtT -= dt; ctrl = false; }
   P.crouch = ctrl && down('D') && P.onGround && P.atk <= 0; P.h = P.crouch ? 48 : 76;
-  let ax = 0; if (ctrl && !P.crouch) { if (down('L')) ax -= 1; if (down('R')) ax += 1; }
+  let ax = 0; if (ctrl) { if (down('L')) ax -= 1; if (down('R')) ax += 1; }
   const acc = P.onGround ? (P.slip ? 380 : 1900) : 1300;
-  if (ax) { P.vx = clamp(P.vx + ax * acc * dt, -190, 190); if (P.atk <= 0) P.face = ax; }
+  if (ax) { const mv = P.crouch ? 80 : 190; P.vx = clamp(P.vx + ax * acc * dt, -mv, mv); if (P.atk <= 0) P.face = ax; }
   else { const fr = (P.onGround ? (P.slip ? 200 : 2300) : 420) * dt; if (Math.abs(P.vx) <= fr) P.vx = 0; else P.vx -= sign(P.vx) * fr; }
   if (P.atk > 0 && P.onGround && !P.slip) P.vx *= Math.pow(0.002, dt);
   P.coyote = P.onGround ? .1 : Math.max(0, P.coyote - dt);
   if (ctrl && hit('J')) P.jbuf = .13; else P.jbuf = Math.max(0, P.jbuf - dt);
-  if (P.jbuf > 0 && P.coyote > 0) { P.vy = -530; P.jbuf = 0; P.coyote = 0; P.onGround = false; sfx.jump(); burst(P.x, P.y, 5, ['#cfd8e6', '#8fa3c7'], 70, .3); }
+  if (P.jbuf > 0 && P.coyote > 0) { P.vy = -530; P.sq = -.14; P.jbuf = 0; P.coyote = 0; P.onGround = false; sfx.jump(); burst(P.x, P.y, 5, ['#cfd8e6', '#8fa3c7'], 70, .3); }
   if (ctrl && !down('J') && P.vy < -190 && P.hurtT <= 0) P.vy = -190;
   if (ctrl && hit('A') && P.atk <= 0) { P.atk = ATK_T; P.atkSet = new Set(); sfx.swing(); }
   if (P.atk > 0) {
@@ -43,6 +43,8 @@ function updatePlayer(dt, ctrl) {
   P.vy = Math.min(900, P.vy + GRAV * dt);
   const wasG = P.onGround;
   collide(P, dt);
+  P.sq = P.sq > 0 ? Math.max(0, P.sq - dt) : Math.min(0, P.sq + dt);
+  if (!wasG && P.onGround) P.sq = .12;
   if (!wasG && P.onGround) burst(P.x, P.y, 4, ['#cfd8e6', '#8fa3c7'], 60, .25);
   // idle antics
   if (P.onGround && Math.abs(P.vx) < 6 && P.atk <= 0 && !ax && ctrl && !P.crouch) {
@@ -57,7 +59,7 @@ function updatePlayer(dt, ctrl) {
       if (P.wigT <= 0) { P.wigT = rnd(2.4, 3.8); if (Math.random() < .5) doBark(); else { say(P, pick(['ХИ-ХИ', 'АХАХА', 'ЛЯ-ЛЯ-ЛЯ', 'ХЕ-ХЕ']), 1); sfx.laugh(4, rnd(560, 680), .12); } }
     }
   } else { P.idleT = 0; P.wigT = 1.6; P.idleAnim = ''; }
-  if (P.onGround && Math.abs(P.vx) > 30) P.runT += dt; else P.runT = 0;
+  if (P.onGround && Math.abs(P.vx) > 30) { const st = P.runT * 4.5 | 0; P.runT += dt; if ((P.runT * 4.5 | 0) !== st && !P.crouch) parts.push({ k: 'p', x: P.x - P.face * 8, y: P.y - 2, vx: -P.face * rnd(20, 50), vy: -rnd(10, 40), s: 2, c: '#8fa3c7', life: .3, g: 0 }); } else P.runT = 0;
   // safe spot / pits
   const s = P.ground;
   if (P.onGround && s && s.k !== 'p') { const m = Math.min(26, s.w / 2); P.safeX = clamp(P.x, s.x + m, s.x + s.w - m); P.safeY = s.y; }
@@ -102,7 +104,7 @@ function drawPlayer() {
   else if (mode === 'dead' || P.hurtT > 0) name = 'g_hit';
   else if (P.atk > 0) name = (ATK_T - P.atk) < .06 ? 'g_wind' : 'g_smash';
   else if (!P.onGround) name = 'g_jump';
-  else if (P.crouch) name = 'g_crouch';
+  else if (P.crouch) { if (Math.abs(P.vx) > 20) { name = (P.runT * 7 | 0) % 2 ? 'g_crouch2' : 'g_crouch'; oy = (P.runT * 14 | 0) % 2 ? -1 : 0; } else name = 'g_crouch'; }
   else if (Math.abs(P.vx) > 30) { if ((P.runT * 9 | 0) % 2) { name = 'g_jump'; oy = -8; } else name = 'g_run'; }
   else if (P.emoteT > 0 && P.emote === 'laugh') name = (P.emoteT / .1 | 0) % 2 ? 'g_laugh2' : 'g_laugh1';
   else if (P.emoteT > 0 && P.emote === 'bark') { name = 'g_idle'; oy = -3; }
@@ -110,7 +112,13 @@ function drawPlayer() {
   if (P.inv > 0 && P.hurtT <= 0 && mode === 'play' && (P.inv * 18 | 0) % 2) return;
   const lv = stats.kills >= 18 ? 3 : stats.kills >= 9 ? 2 : stats.kills >= 3 ? 1 : 0, img = galB[lv];
   if (wig) { drawWiggle(img, name, P.x, P.y, flip, gameT); drawNotes(P.x, P.y, P.face); }
-  else spr(name, P.x, P.y + oy, flip, { img });
+  else {
+    if (name === 'g_idle' && mode === 'play') oy = (gameT * 1.6 | 0) % 2 ? -1 : 0;   // дышит
+    // растяжение в прыжке и приплюснутость при приземлении
+    const q = P.sq || 0, sx = q > 0 ? 1 + q * 1.4 : 1 + q * .8, sy = q > 0 ? 1 - q * 1.5 : 1 - q * 1.1;
+    spr(name, P.x, P.y + oy, flip, { img, sx, sy });
+    if (P.atk > 0) { const e = ATK_T - P.atk; if (e > .05 && e < .17) { g.globalAlpha = .75 * (1 - (e - .05) / .12); g.strokeStyle = '#fff'; g.lineWidth = 5; g.beginPath(); const cx = P.x + P.face * 8, cy = P.y - 44; if (P.face > 0) g.arc(cx, cy, 48, -1.9, .55); else g.arc(cx, cy, 48, Math.PI - .55, Math.PI + 1.9); g.stroke(); g.globalAlpha = 1; } }
+  }
 }
 
 // ---------- hazards, cases, triggers ----------
@@ -281,7 +289,7 @@ function hitBoss() {
     b.phase = np; b.sline = 0;
     if (np === 3) { b.state = 'p3'; b.t = 0; tears = []; say(b, 'ПОДОЖДИ… ЭТО МОТОЦИКЛ?', 1.7); stopSong(); for (const r of L.rabbits) r.vx = 0; return true; }
   }
-  b.state = 'hurt'; b.t = 0; b.hops = 0;
+  b.state = 'hurt'; b.t = 0; b.hops = 0; b.sq = -.2;
   const arr = SCREAMS[b.phase - 1]; say(b, arr[b.sline++ % arr.length], 1.5); sfx.scream(.45 + b.phase * .22);
   if (b.phase >= 2 && Math.random() < .75) spawnSupport();
   return true;
@@ -308,7 +316,7 @@ function updateBoss(dt) {
       b.hopT += dt; const k = Math.min(1, b.hopT / .85);
       b.x = b.hopFrom + (b.hopTo - b.hopFrom) * k; b.y = FYB - Math.sin(k * Math.PI) * 150;
       if (k >= 1) {
-        b.y = FYB; shake = Math.max(shake, 8); sfx.thud(); burst(b.x, b.y, 16, ['#b9a8d8', '#8f7fb0'], 170, .5);
+        b.y = FYB; b.sq = .25; shake = Math.max(shake, 8); sfx.thud(); burst(b.x, b.y, 16, ['#b9a8d8', '#8f7fb0'], 170, .5);
         for (let i = 0; i < (ph === 2 ? 4 : 2); i++) { const sd = i % 2 ? 1 : -1; tears.push({ x: b.x + sd * 50, y: b.y - 30, vx: sd * rnd(120, 230), vy: -rnd(250, 360), g: 700 }); }
         if (Math.abs(P.x - b.x) < 72 && P.onGround) { P.vx = sign(P.x - b.x) * 250; P.vy = -210; P.onGround = false; say(b, 'ОЙ! ПРОСТИ!', 1.2); }
         if (ph === 2 && b.hops < 1 && Math.random() < .5) { b.hops++; startHop(); }
@@ -386,7 +394,10 @@ function drawBoss() {
     if (b.phase === 3 && b.state !== 'dying') drawCase({ x: b.x - b.face * 92, y: FYB, ci: 4, scale: 1, open: false, bump: 0 });
     // тень
     g.globalAlpha = .3; R(b.x - 50, FYB - 2, 100, 5, '#000'); g.globalAlpha = 1;
-    spr(name, b.x + ox, b.y + oy, flip);
+    b.sq = b.sq > 0 ? Math.max(0, b.sq - .016) : Math.min(0, (b.sq || 0) + .016);
+    const bq = b.sq, br = Math.sin(gameT * 3) * .012, hop = b.state === 'hop' ? .08 : 0;
+    const bsx = 1 + (bq > 0 ? bq * .7 : bq * .35) - hop, bsy = 1 - (bq > 0 ? bq * .8 : bq * .5) + br + hop;
+    spr(name, b.x + ox, b.y + oy, flip, { sx: bsx, sy: bsy });
     if (b.fl > 0.08) spr(name, b.x + ox, b.y + oy, flip, { img: atlasW, a: .8 });
     if (b.state === 'dying' && (modeT * 12 | 0) % 2) spr(name, b.x + ox, b.y + oy, flip, { img: atlasW, a: Math.min(.9, modeT * .35) });
     if (b.bub) bubble(b.bub.s, b.x, b.y - 150, { size: b.state === 'hurt' || b.grief > 0 ? 12 : 10, max: 16, shake: b.state === 'hurt' || b.state === 'cry' ? 2 : 0, color: b.state === 'hurt' ? '#a3111f' : '#16161d' });
@@ -478,6 +489,7 @@ function drawHud() {
   drawBossHud();
   if (banner) { const a = Math.min(1, banner.t * 2); T(banner.s, W / 2, 120, { size: 18, color: '#fff', stroke: '#1b2a6b', sw: 6, a }); if (banner.sub && (banner.t * 5 | 0) % 2) T(banner.sub, W / 2, 152, { size: 12, color: '#ffe36b', stroke: '#16161d', a }); }
   if (letterT > 0) OV.push(c => { const a = Math.min(1, letterT * 2); c.globalAlpha = a; c.fillStyle = '#16161d'; c.fillRect(W / 2 - 172, 78, 344, 104); c.fillStyle = '#fff6e0'; c.fillRect(W / 2 - 168, 82, 336, 96); c.font = '9px PS2P,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#5a4a3a'; c.fillText('ПИСЬМО ИЗ ЧЕМОДАНА:', W / 2, 100); c.fillStyle = '#16161d'; c.font = '11px PS2P,monospace'; c.fillText('«ГАЛЯ, ОСТАНОВИСЬ.', W / 2, 126); c.fillText('ПОЖАЛУЙСТА.»', W / 2, 144); c.font = '8px PS2P,monospace'; c.fillStyle = '#5a4a3a'; c.fillText('— кролики', W / 2 + 90, 164); c.globalAlpha = 1; });
+  if (mode === 'celebrate' && cele.kind === 'howl' && cele.t > .9) OV.push(c => { const a = Math.min(1, (cele.t - .9) * 2.5) * Math.min(1, (CELE_T - cele.t) * 3); c.globalAlpha = a * .92; c.fillStyle = '#fff6c8'; c.beginPath(); c.arc(W - 130, 150, 40, 0, 6.3); c.fill(); c.fillStyle = '#e3d79a'; [[-14, -8, 8], [10, 12, 6], [12, -16, 4]].forEach(m => { c.beginPath(); c.arc(W - 130 + m[0], 150 + m[1], m[2], 0, 6.3); c.fill(); }); c.globalAlpha = 1; });
   if (mode === 'celebrate') {
     const t = cele.t, pop = Math.min(1, t * 6);
     if (!L.after) T('КОМБО x' + cele.n + '!', W / 2, 84, { size: 26 * pop, color: '#ffe36b', stroke: '#a3111f', sw: 7, rot: Math.sin(t * 9) * .05 });
@@ -687,6 +699,6 @@ window.__dbg = {
   get s() { return { scene, mode, x: P.x, y: P.y, hp: P.hp, kills: stats && stats.kills, hats: stats && stats.hats, boss: boss && { hp: boss.hp, state: boss.state, phase: boss.phase, x: boss.x }, cam, rabbits: L && L.rabbits.length, chain, fade }; },
   warp(x, y) { P.x = x; P.y = y === undefined ? FY : y; P.vx = P.vy = 0; cam = clamp(x - 360, 0, L.w - W); },
   god(v) { P.maxhp = v ? 99 : 5; P.hp = P.maxhp; },
-  start() { startLevel(0); }, tikhon() { startTikhon(); }, cele(k) { cele.n = 4; startCelebrate(); if (k) cele.kind = k; }, idle(k) { P.idleT = 4; P.idleAnim = k; P.idleA = 0; }, boss() { startBoss(); }, bosshp(n) { boss.hp = n; }, ending() { startEnding(); },
+  start() { startLevel(0); }, tikhon() { startTikhon(); }, soul() { souls.push({ x: P.x + 60, y: P.y - 20, t: 0, sc: 1, s: 'я тебя прощаю, Галина…' }); }, cele(k) { cele.n = 4; startCelebrate(); if (k) cele.kind = k; }, idle(k) { P.idleT = 4; P.idleAnim = k; P.idleA = 0; }, boss() { startBoss(); }, bosshp(n) { boss.hp = n; }, ending() { startEnding(); },
   skip() { iceSeen = true; fallCase = true; }, L: () => L, P, songs: SONGS, n2f: N2F, audio: () => AC && { state: AC.state, song: song && song.name }
 };

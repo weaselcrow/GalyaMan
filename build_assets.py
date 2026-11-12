@@ -34,7 +34,24 @@ def add_auto(names, lst):
         add(name, im, jacket_cx(im))
 
 
-add_auto(['g_wolf0', 'g_crouch', 'g_crouch2', 'g_howl1', 'g_howl2'], cut.cut(None, 5, 0.2, path='art/galya_wolf.png', alpha=True))
+def biggest_blob(im):
+    """keep only the largest connected piece (drops the frying pan lying next to crouching Galya)"""
+    from scipy import ndimage as ndi2
+    a = np.array(im)
+    lab, n = ndi2.label(a[..., 3] > 0)
+    if n < 2:
+        return im
+    sizes = ndi2.sum(a[..., 3] > 0, lab, range(1, n + 1))
+    keep = lab == (int(np.argmax(sizes)) + 1)
+    a[~keep] = 0
+    ys, xs = np.where(keep)
+    return Image.fromarray(a, 'RGBA').crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+
+
+wolf = cut.cut(None, 5, 0.2, path='art/galya_wolf.png', alpha=True)
+wolf[1] = (biggest_blob(wolf[1][0]), None)
+wolf[2] = (biggest_blob(wolf[2][0]), None)
+add_auto(['g_wolf0', 'g_crouch', 'g_crouch2', 'g_howl1', 'g_howl2'], wolf)
 add_auto(['g_vod%d' % i for i in range(8)], cut.cut(None, 8, 0.2, path='art/galya_vodka.png', alpha=True))
 add_auto(['g_mask0', 'g_mask1', 'g_mask2'], cut.cut(None, 3, 0.2, path='art/galya_mask.png', alpha=True))
 add_auto(['g_shake1', 'g_shake2'], cut.cut(None, 2, 0.2, path='art/galya_shake.png'))

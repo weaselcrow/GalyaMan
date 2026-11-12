@@ -11,7 +11,7 @@ let ice = null, iceSeen = false;
 let boss = null, tears = [], puddles = [];
 let banner = null, letterT = 0, walker = null, walkerT = 12, fallCase = false;
 let paused = false, gameT = 0;
-const P = { x: 90, y: FY, w: 24, h: 76, crouch: false, idleAnim: '', idleA: 0, idleF: '', masked: 0, vx: 0, vy: 0, face: 1, onGround: true, ground: null, hp: 5, maxhp: 5, inv: 0, hurtT: 0, atk: 0, atkSet: null, coyote: 0, jbuf: 0, idleT: 0, runT: 0, emote: '', emoteT: 0, safeX: 90, safeY: FY, bub: null, bigHat: 0, wigT: 0, hitWall: false, slip: false };
+const P = { x: 90, y: FY, w: 24, h: 76, crouch: false, sq: 0, idleAnim: '', idleA: 0, idleF: '', masked: 0, vx: 0, vy: 0, face: 1, onGround: true, ground: null, hp: 5, maxhp: 5, inv: 0, hurtT: 0, atk: 0, atkSet: null, coyote: 0, jbuf: 0, idleT: 0, runT: 0, emote: '', emoteT: 0, safeX: 90, safeY: FY, bub: null, bigHat: 0, wigT: 0, hitWall: false, slip: false };
 const ATK_T = 0.3, CELE_T = 3.3, GRAV = 1500;
 
 const NAMES = [
@@ -464,7 +464,7 @@ function drawRabbit(r) {
   }
   if (r.awe) { name = 'r_tremble'; ox = (gameT * 40 | 0) % 2 ? 1 : -1; }
   else if (r.state === 'flee') { name = 'r_run'; oy = -Math.abs(Math.sin(r.t * 15)) * 6; }
-  else if (r.state === 'scared' || r.state === 'corner') { name = 'r_tremble'; ox = (gameT * 40 | 0) % 2 ? 1 : -1; }
+  else if (r.state === 'scared' || r.state === 'corner') { name = 'r_tremble'; ox = (gameT * 40 | 0) % 2 ? 1 : -1; if (Math.random() < .04) parts.push({ k: 'p', x: r.x + rnd(-10, 10), y: r.y - 30 * r.scale, vx: rnd(-40, 40), vy: -rnd(40, 90), s: 2, c: '#8fdcff', life: .45, g: 500 }); }
   else if (r.state === 'offer') { name = 'r_give'; oy = -Math.abs(Math.sin(r.t * 5)) * 2; }
   else { const ph = r.t % 2.6; if (ph < .3) oy = -Math.sin(ph / .3 * Math.PI) * 5; }
   if (mode === 'ice' && ice) flip = ice.x < r.x;
